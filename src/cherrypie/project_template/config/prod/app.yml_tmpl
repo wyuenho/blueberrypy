@@ -19,15 +19,19 @@ global:
   tools.staticdir.root: {{path}}/static
   tools.staticfile.root: {{path}}/static
 /css:
+  tools.sessions.on: false
   tools.staticdir.on: true
   tools.staticdir.dir: css
 /js:
+  tools.sessions.on: false
   tools.staticdir.on: true
   tools.staticdir.dir: js
 /img:
+  tools.sessions.on: false
   tools.staticdir.on: true
   tools.staticdir.dir: img
 /favicon.ico:
+  tools.sessions.on: false
   tools.staticfile.on: true
   tools.staticfile.filename: img/favicon.ico
   {%- endif %}
