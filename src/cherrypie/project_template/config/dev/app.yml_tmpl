@@ -11,8 +11,6 @@ global:
   tools.sessions.on: true
   {% if use_redis -%}
   tools.sessions.storage_type: redis
-  {% else -%}
-  tools.sessions.storage_type: memcached
   {%- endif %}
   {% if use_controller -%}
   tools.staticdir.root: {{path}}/static
