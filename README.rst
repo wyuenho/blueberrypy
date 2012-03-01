@@ -117,7 +117,7 @@ You can install the optional speedup packages too::
 
    $ pip install MarkupSafe cdecimal hiredis
 
-Finall, you need to install a database driver such as `psycopg2`::
+Finally, you need to install a database driver such as `psycopg2`::
 
    $ pip install psycopg2
 
@@ -126,6 +126,7 @@ Now you can serve the generated app::
    $ cherrypie serve
 
 Now type `http://localhost:8080` into your browser's location bar and voila!
+
 Happy coding!
 
 TODO
