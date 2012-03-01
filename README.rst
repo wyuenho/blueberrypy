@@ -112,19 +112,19 @@ this::
 
 Given the above selection, you should do this next::
 
-   pip install routes webassets redis sqlalchemy
+   $ pip install routes webassets redis sqlalchemy
 
 You can install the optional speedup packages too::
 
-   pip install MarkupSafe cdecimal hiredis
+   $ pip install MarkupSafe cdecimal hiredis
 
 Finall, you need to install a database driver such as `psycopg2`::
 
-   pip install psycopg2
+   $ pip install psycopg2
 
 Now you can serve the generated app::
 
-   cherrypie serve
+   $ cherrypie serve
 
 Now type `http://localhost:8080` into your browser's location bar and voila!
 Happy coding!
