@@ -124,8 +124,7 @@ def create(args, config_dir=None):
     footer = textwrap.dedent("""
     ===========================================================================
     Your project skeleton has been created under {path}.
-    
-    
+ 
     Subsystems chosen
     -----------------
     Routes (RESTful controllers): {use_rest_controller}
@@ -136,15 +135,18 @@ def create(args, config_dir=None):
     
     Please install the neccessary packages indicated as True above via 'pip' or
     'easy_install'.
-    
+ 
     In unrestricted environments, you may also install 'MarkupSafe' and
     'cdecimal' to speed up Jinja2 and SQLAlchemy's queries on Decimal fields
-    respectively. You should also download the appropriate database driver if
-    you have opted in to use CherryPie's SQLAlchemy support.
-    
+    respectively. You may also install 'hiredis' if you have opted for the Redis
+    session storage.
+
+    You should also download the appropriate database driver if you have decided
+    to use CherryPie's SQLAlchemy support.
+
     For more information, the CherryPie documentation is available at
     http://cherrypie.readthedocs.org.
-    
+
     Happy coding!
     """.format(**cherrypie_config))
 
