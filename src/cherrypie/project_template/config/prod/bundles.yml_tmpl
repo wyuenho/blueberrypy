@@ -1,4 +1,4 @@
-directory: {{package}}/static
+directory: {{path}}/static
 url: /
 
 bundles:
