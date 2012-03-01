@@ -35,10 +35,9 @@ you want.
 Installation
 ------------
 CherryPie is still unreleased, so for now you have to install it directly from
-BitBucket.
+BitBucket::
 
-
-   pip install https://bitbucket.org/wyuenho/cherrypie
+   $ pip install https://bitbucket.org/wyuenho/cherrypie
 
 
 Note: You should probably install it inside a `virtualenv <http://www.virtualenv.org/>`_.
