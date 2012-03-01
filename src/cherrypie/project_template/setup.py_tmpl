@@ -1,5 +1,7 @@
 from setuptools import setup, find_packages
 
+install_requires = [{% if use_sqlalchemy -%}'SQLAlchemy'{% endif %}{% if use_redis -%}, 'redis'{% endif %}{% if use_webassets -%}, 'webasset'{% endif %}{% if use_rest_controller -%}, 'Routes'{% endif %}]
+
 setup(name='{{package}}',
       version='{{version}}',
       author='{{author}}',
@@ -7,4 +9,5 @@ setup(name='{{package}}',
       package_dir={'': 'src'},
       packages=find_packages('src', exclude=["test**"]),
       namespace_packages=['{{package}}'],
+      install_requires=install_requires,
       zip_safe=False)

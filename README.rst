@@ -94,24 +94,13 @@ this::
    webassets: True
    redis: False
    SQLAlchemy: True
-   
-   Please install the neccessary packages indicated as True above via 'pip' or
-   'easy_install'.
-
-   In unrestricted environments, you may also install 'MarkupSafe' and
-   'cdecimal' to speed up Jinja2 and SQLAlchemy's queries on Decimal fields
-   respectively. You may also install 'hiredis' if you have opted for the Redis
-   session storage.
-   
-   You should also download the appropriate database driver if you have decided
-   to use CherryPie's SQLAlchemy support.
-   
    ...
 
 
-Given the above selection, you should do this next::
+If you install a development version of your package now, the dependencies will
+be automatically installed for you as well::
 
-   $ pip install routes webassets redis sqlalchemy
+   $ pip install -e .
 
 You can install the optional speedup packages too::
 
@@ -121,12 +110,11 @@ Finally, you need to install a database driver such as `psycopg2`::
 
    $ pip install psycopg2
 
-Now you can now install your app and serve it::
+Now your package is ready to be served::
 
-   $ pip install -e .
    $ cherrypie serve
 
-Now type `http://localhost:8080` into your browser's location bar and voila!
+Type `http://localhost:8080` into your browser's location bar and voila!
 
 Happy coding!
 

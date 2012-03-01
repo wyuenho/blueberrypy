@@ -133,13 +133,17 @@ def create(args, config_dir=None):
     redis: {use_redis}
     SQLAlchemy: {use_sqlalchemy}
     
-    Please install the neccessary packages indicated as True above via 'pip' or
-    'easy_install'.
+    If you now install your package now the packages above will be automatically
+    installed as well.
+
+    e.g. $ pip install -e .
  
     In unrestricted environments, you may also install 'MarkupSafe' and
     'cdecimal' to speed up Jinja2 and SQLAlchemy's queries on Decimal fields
     respectively. You may also install 'hiredis' if you have opted for the Redis
     session storage.
+
+    e.g. $ pip install MarkupSafe cdecimal hiredis
 
     You should also download the appropriate database driver if you have decided
     to use CherryPie's SQLAlchemy support.
