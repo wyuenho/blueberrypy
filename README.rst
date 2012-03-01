@@ -18,11 +18,11 @@ modules. All the components are optional and completely pluggable without any
 intermodule dependencies, so you can safely pick and choose just the components
 you want.
 
-- SQLAlchemy integration
+- SQLAlchemy ORM integration
 - Per-request SQLAlchemy ORM session
 - Redis session storage
 - Jinja2 template engine
-- Webassets integrated with Jinja2
+- Webassets asset pipeline integrated with Jinja2
 - Application specific logging
 - CherryPy project skeleton generator
 - Preconfigured console for experiementing inside a generated project
@@ -76,6 +76,58 @@ your PATH.
      -c CONFIG_DIR, --config_dir CONFIG_DIR
                            path to the config directory
 
+
+To create a project skeleton::
+
+   $ cherrypie create
+
+After you've answered a couple of questions, you should see something similar to
+this::
+
+   ===========================================================================
+   Your project skeleton has been created under /Users/wyuenho/Documents/workspace/cptest.
+   
+   
+   Subsystems chosen
+   -----------------
+   Routes (RESTful controllers): True
+   Jinja2: True
+   webassets: True
+   redis: False
+   SQLAlchemy: True
+   
+   Please install the neccessary packages indicated as True above via 'pip' or
+   'easy_install'.
+
+   In unrestricted environments, you may also install 'MarkupSafe' and
+   'cdecimal' to speed up Jinja2 and SQLAlchemy's queries on Decimal fields
+   respectively. You may also install 'hiredis' if you have opted for the Redis
+   session storage.
+   
+   You should also download the appropriate database driver if you have decided
+   to use CherryPie's SQLAlchemy support.
+   
+   ...
+
+
+Given the above selection, you should do this next::
+
+   pip install routes webassets redis sqlalchemy
+
+You can install the optional speedup packages too::
+
+   pip install MarkupSafe cdecimal hiredis
+
+Finall, you need to install a database driver such as `psycopg2`::
+
+   pip install psycopg2
+
+Now you can serve the generated app::
+
+   cherrypie serve
+
+Now type `http://localhost:8080` into your browser's location bar and voila!
+Happy coding!
 
 TODO
 ----

@@ -19,7 +19,7 @@ try:
 except:
     setup_requires.append('logutils')
 
-readme_file = open(os.path.abspath(os.path.join(os.path.dirname(__file__), 'README.txt')), 'r')
+readme_file = open(os.path.abspath(os.path.join(os.path.dirname(__file__), 'README.rst')), 'r')
 readme = readme_file.read()
 readme_file.close()
 
@@ -54,10 +54,11 @@ setup(name='cherrypie',
       install_requires=['CherryPy>=3.2.2',
                         'Jinja2>=2.6',
                         'PyYAML>=3.10',
-                        'python-dateutil>=1.5',
+                        'python-dateutil<2.0',
                         'simplejson>=2.3.2'],
       extras_require={'speedups': ['cdecimal>=2.3',
-                                   'MarkupSafe>=0.15'],
+                                   'MarkupSafe>=0.15',
+                                   'hiredis>=0.1.0'],
                       'all': ['SQLAlchemy>=0.7.5',
                               'redis>=2.4.11',
                               'webasset'
