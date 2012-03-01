@@ -121,8 +121,9 @@ Finally, you need to install a database driver such as `psycopg2`::
 
    $ pip install psycopg2
 
-Now you can serve the generated app::
+Now you can now install your app and serve it::
 
+   $ pip install -e .
    $ cherrypie serve
 
 Now type `http://localhost:8080` into your browser's location bar and voila!
