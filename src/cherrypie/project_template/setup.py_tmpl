@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-setup(name='{{project_name}}',
+setup(name='{{package}}',
       version='{{version}}',
       author='{{author}}',
       author_email='{{email}}',
