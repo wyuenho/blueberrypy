@@ -59,7 +59,7 @@ your PATH.
      Type 'cherrypie -h' or 'cherrypie --help' for general help.
      Type 'cherrypie help <command>' for help on that specific command.
 
-     commands:
+  commands:
 
      help                print this help or a command's if an argument is given
      create              create a project skeleton
