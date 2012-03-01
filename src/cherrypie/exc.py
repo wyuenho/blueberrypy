@@ -1,0 +1,2 @@
+class CherryPieNotConfiguredError(Exception):
+    pass

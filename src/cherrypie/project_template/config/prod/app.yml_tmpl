@@ -1,0 +1,73 @@
+global:
+  environment: production
+  engine.logging.on: true
+  {% if use_sqlalchemy -%}
+  engine.sqlalchemy.on: true
+  {%- endif %}
+/:
+  tools.proxy.on: true
+  {% if use_sqlalchemy -%}
+  tools.orm_session.on: true
+  {%- endif %}
+  tools.sessions.on: true
+  {% if use_redis -%}
+  tools.sessions.storage_type: redis
+  {% else -%}
+  tools.sessions.storage_type: memcached
+  {%- endif %}
+  {% if use_controller -%}
+  tools.staticdir.root: {{path}}/static
+  tools.staticfile.root: {{path}}/static
+/css:
+  tools.staticdir.on: true
+  tools.staticdir.dir: css
+/js:
+  tools.staticdir.on: true
+  tools.staticdir.dir: js
+/img:
+  tools.staticdir.on: true
+  tools.staticdir.dir: img
+/favicon.ico:
+  tools.staticfile.on: true
+  tools.staticfile.filename: img/favicon.ico
+  {%- endif %}
+
+project_metadata:
+  project_name: {{project_name}}
+  package: {{package}}
+ 
+controllers:
+  {% if use_controller -%}
+  controller: !!python/name:{{package}}.controller.Root
+  script_name: ''
+  {%- endif %}
+  {% if use_rest_controller -%}
+  rest_controller: !!python/name:{{package}}.rest_controller.rest_controller
+  rest_script_name: api
+  rest_config:
+    /:
+      tools.proxy.on: true
+      tools.orm_session.on: true
+      error_page.default: !!python/name:{{package}}.rest_controller.generic_error_handler
+      request.error_response: !!python/name:{{package}}.rest_controller.unexpected_error_hander
+  {%- endif %}
+  {% if not use_rest_controller and not use_controller -%}
+  controller:
+  script_name: ''
+  {%- endif %}
+{% if use_sqlalchemy -%}
+sqlalchemy_engine:
+  url: {{sqlalchemy_url}}
+  pool_recycle: 3600
+{%- endif %}
+
+{% if use_jinja2 -%}
+jinja2:
+  loader: !!python/object:jinja2.loaders.FileSystemLoader
+          encoding: utf-8
+          searchpath: [{{path}}/src/{{package}}/template]
+  bytecode_cache: !!python/object:jinja2.bccache.FileSystemBytecodeCache {directory: {{path}}/.cache,
+                                                                          pattern: __jinja2_%s.cache}
+  auto_reload: false
+  use_webassets: {{use_webassets|lower}}
+{%- endif %}

@@ -1,0 +1,15 @@
+import cherrypy
+{% if use_jinja2 -%}
+from cherrypie.template_engine import get_template
+{%- endif %}
+
+class Root(object):
+
+    @cherrypy.expose
+    def index(self):
+        {% if use_jinja2 -%}
+        tmpl = get_template("index.html")
+        return tmpl.render()
+        {% else -%}
+        return "Hello World!"
+        {%- endif %}

@@ -1,0 +1,142 @@
+import calendar
+import os
+from base64 import b64decode, b64encode
+from datetime import datetime, timedelta
+from hashlib import sha256
+
+from sqlalchemy import Column, Integer, Unicode, UnicodeText, Date, DateTime, \
+    String, BigInteger, Enum, SmallInteger, func
+from sqlalchemy.orm import deferred
+from sqlalchemy.orm.interfaces import PropComparator
+from sqlalchemy.orm import synonym
+from sqlalchemy.ext.declarative import synonym_for, declarative_base, \
+    comparable_using
+
+
+Base = declarative_base()
+metadata = Base.metadata
+
+
+__all__ = ["User"]
+
+
+class _AgeComparator(PropComparator):
+
+    def __clause_element__(self):
+        return func.date_part("year", func.age(self.mapper.c.date_of_birth))
+
+    def operate(self, op, *args, **kwargs):
+        return op(self.__clause_element__(), *args, **kwargs)
+
+    def reverse_operate(self, op, *args, **kwargs):
+        return op(self.__clause_element__(), *args, **kwargs)
+
+
+class User(Base):
+    """
+    This example class represents a Facebook user. You can customize this class
+    however you want.
+    """
+
+    __tablename__ = "user"
+
+
+    def __init__(self, **kwargs):
+        super(User, self).__init__(**kwargs)
+
+    id = Column(Integer, autoincrement=True, primary_key=True)
+    fbid = Column(BigInteger, unique=True, index=True)
+    username = Column(Unicode(80), unique=True, index=True)
+    displayname = Column(Unicode(80), nullable=False)
+    email = Column(Unicode(80), unique=True, nullable=False, index=True)
+
+    _salt = Column("salt", String(12))
+
+    @synonym_for("_salt")
+    @property
+    def salt(self):
+        """Generates a cryptographically random salt and sets its Base64 encoded
+        version to the salt column, and returns the encoded salt.
+        """
+        if not self.id and not self._salt:
+            self._salt = b64encode(os.urandom(8))
+
+        return self._salt
+
+    # 40 is the length of the SHA-256 encoded string length
+    _password = Column("password", Unicode(64))
+    def __set_password(self, password):
+        self._password = self.__encrypt_password(password,
+                                                 b64decode(self.salt))
+    def __get_password(self):
+        return self._password
+    password = synonym("_password", descriptor=property(__get_password,
+                                                        __set_password))
+
+    def __encrypt_password(self, password, salt):
+        """
+        Encrypts the password with the given salt using SHA-256. The salt must
+        be cryptographically random bytes.
+
+        :param password: the password that was provided by the user to try and
+                         authenticate. This is the clear text version that we
+                         will need to match against the encrypted one in the
+                         database.
+        :type password: basestring
+
+        :param salt: the salt is used to strengthen the supplied password
+                     against dictionary attacks.
+        :type salt: an 8-byte long cryptographically random byte string
+        """
+
+        if isinstance(password, unicode):
+            password_bytes = password.encode("UTF-8")
+        else:
+            password_bytes = password
+
+        hashed_password = sha256()
+        hashed_password.update(password_bytes)
+        hashed_password.update(salt)
+        hashed_password = hashed_password.hexdigest()
+
+        if not isinstance(hashed_password, unicode):
+            hashed_password = hashed_password.decode("UTF-8")
+
+        return hashed_password
+
+    def validate_password(self, password):
+        """Check the password against existing credentials.
+
+        :type password: unicode
+        :param password: clear text password
+        :rtype: bool
+        """
+        return self.password == self.__encrypt_password(password,
+                                                        b64decode(self.salt))
+
+    sex = Column(Enum("m", "f", name="sex"))
+    date_of_birth = Column(Date)
+    bio = deferred(Column(UnicodeText(65536)))
+
+    @comparable_using(_AgeComparator)
+    @property
+    def age(self):
+        """Property calculated from (current time - :attr:`User.date_of_birth` - leap days)"""
+        if self.date_of_birth:
+            today = (datetime.utcnow() + timedelta(hours=self.timezone)).date()
+            birthday = self.date_of_birth
+            if isinstance(birthday, datetime):
+                birthday = birthday.date()
+            age = today - (birthday or (today - timedelta(1)))
+            return (age.days - calendar.leapdays(birthday.year, today.year)) / 365
+        return -1
+
+    locale = Column(String(10), nullable=False)
+    timezone = Column(SmallInteger, nullable=False)
+
+    # No server_default set here,
+    # add 'server_default=text("YOUR RDBMS-SPECIFIC TIMESTAMP FUNCTION")' if
+    # that's what you want
+    created = Column(DateTime, default=datetime.utcnow, nullable=False)
+    lastmodified = Column(DateTime, default=datetime.utcnow, nullable=False)
+    lastaccessed = Column(DateTime, default=datetime.utcnow, nullable=False)

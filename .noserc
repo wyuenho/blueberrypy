@@ -1,0 +1,10 @@
+[nosetests]
+verbosity=2
+detailed-errors=True
+nocapture=True
+with-doctest=True
+with-coverage=True
+cover-html=True
+with-openstack=True
+openstack-color=True
+openstack-show-elapsed=True

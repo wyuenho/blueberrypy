@@ -1,0 +1,2 @@
+[sqlalchemy_engine]
+url = postgresql+psycopg2://tester:tester@localhost/test_cherrypy_extra
