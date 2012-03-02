@@ -33,7 +33,7 @@ global:
 /favicon.ico:
   tools.sessions.on: false
   tools.staticfile.on: true
-  tools.staticfile.filename: img/favicon.ico
+  tools.staticfile.filename: favicon.ico
   {%- endif %}
 
 project_metadata:
