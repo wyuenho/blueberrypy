@@ -30,6 +30,7 @@ except ImportError:
 else:
     geos_support = True
 
+# TODO: add validators
 def to_json(instance, includes=None, excludes=None, serialize=False):
 
     includes = set([includes] if isinstance(includes, basestring) else includes and list(includes) or [])

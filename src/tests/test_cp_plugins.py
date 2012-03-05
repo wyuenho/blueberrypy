@@ -4,8 +4,7 @@ from cherrypy.test import helper
 
 
 """
-:see: `cherrypie.test.test_states:PluginTests`, `cherrypie.test.helper.CPProcess`,
-      and `cherrypie.test._test_states_demo:Root`
+:see: `blueberrypy.test.test_states:PluginTests`, `blueberrypy.test.helper.CPProcess`, and `blueberrypy.test._test_states_demo:Root`
 """
 
 

@@ -1,6 +1,6 @@
 import cherrypy
 
-from cherrypie.plugins import SQLAlchemyPlugin
+from blueberrypy.plugins import SQLAlchemyPlugin
 
 class EngineTest(object):
 

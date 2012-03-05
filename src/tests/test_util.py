@@ -4,7 +4,7 @@ import unittest
 
 from base64 import b64encode
 
-from cherrypie.util import CSRFToken, pad_block_cipher_message, \
+from blueberrypy.util import CSRFToken, pad_block_cipher_message, \
     unpad_block_cipher_message
 
 

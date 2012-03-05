@@ -1,0 +1,2 @@
+class BlueberryPyNotConfiguredError(Exception):
+    pass

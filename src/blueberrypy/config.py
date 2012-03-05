@@ -25,7 +25,7 @@ class ConfigurationValidator(object):
     pass
 
 
-class CherryPieConfiguration(object):
+class BlueberryPyConfiguration(object):
 
     def __init__(self, config_dir=None, app_config=None, environment=None):
 

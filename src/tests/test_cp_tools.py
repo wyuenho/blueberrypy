@@ -14,8 +14,8 @@ from sqlalchemy.ext.declarative import declarative_base
 
 from testconfig import config as testconfig
 
-from cherrypie.plugins import SQLAlchemyPlugin
-from cherrypie.tools import SQLAlchemySessionTool
+from blueberrypy.plugins import SQLAlchemyPlugin
+from blueberrypy.tools import SQLAlchemySessionTool
 cherrypy.tools.orm_session = SQLAlchemySessionTool()
 
 def get_config(section_name):

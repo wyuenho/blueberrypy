@@ -55,7 +55,7 @@ class Console(InteractiveConsole):
         import sqlalchemy
         import sqlalchemy.orm
         import cherrypy
-        import cherrypie
+        import blueberrypy
 
         lcls = dict(locals())
 

@@ -9,7 +9,7 @@ import cherrypy
 from cherrypy.lib import sessions
 from cherrypy.test import helper
 
-from cherrypie.session import RedisSession
+from blueberrypy.session import RedisSession
 sessions.RedisSession = RedisSession
 
 

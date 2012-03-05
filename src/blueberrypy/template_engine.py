@@ -1,6 +1,6 @@
 from jinja2 import Environment as Jinja2Environment
 
-from cherrypie.exc import CherryPieNotConfiguredError
+from blueberrypy.exc import BlueberryPyNotConfiguredError
 
 __all__ = ["jinja2_env", "configure_jinja2", "get_template"]
 
@@ -32,5 +32,5 @@ def configure_jinja2(assets_env=None, **kwargs):
 
 def get_template(*args, **kwargs):
     if not jinja2_env:
-        raise CherryPieNotConfiguredError("Jinja2 not configured")
+        raise BlueberryPyNotConfiguredError("Jinja2 not configured")
     return jinja2_env.get_template(*args, **kwargs)

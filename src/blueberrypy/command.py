@@ -19,12 +19,12 @@ import cherrypy
 from cherrypy.process import servers
 from cherrypy.process.plugins import Daemonizer, DropPrivileges, PIDFile
 
-import cherrypie
-from cherrypie.config import CherryPieConfiguration
-from cherrypie.project import create_project
-from cherrypie.console import Console
-from cherrypie.template_engine import configure_jinja2
-from cherrypie.exc import CherryPieNotConfiguredError
+import blueberrypy
+from blueberrypy.config import BlueberryPyConfiguration
+from blueberrypy.project import create_project
+from blueberrypy.console import Console
+from blueberrypy.template_engine import configure_jinja2
+from blueberrypy.exc import BlueberryPyNotConfiguredError
 
 
 # TODO: integrate with weberror
@@ -39,30 +39,30 @@ def create(args, config_dir=None):
     valid_version_re = re.compile(r"^\d+.\d+(.\d+)*(a|b|c|rc\d+(.\d+)?)?(.post\d+)?(.dev\d+)?$")
     valid_email_re = re.compile(r"^.+@.+$")
 
-    cherrypie_config = {}
-    cherrypie_config["path"] = args.path or os.getcwdu()
-    cherrypie_config["current_year"] = datetime.now().year
+    blueberrypy_config = {}
+    blueberrypy_config["path"] = args.path or os.getcwdu()
+    blueberrypy_config["current_year"] = datetime.now().year
 
-    cherrypie_config["project_name"] = raw_input("Project name: ")
+    blueberrypy_config["project_name"] = raw_input("Project name: ")
 
     while True:
-        cherrypie_config["package"] = package = raw_input("Package name: [a-z_]+ ")
+        blueberrypy_config["package"] = package = raw_input("Package name: [a-z_]+ ")
         if not valid_package_name_re.match(package):
             print("'%s' is an invalid package name." % package, file=sys.stderr)
         else:
             break
 
     while True:
-        cherrypie_config["version"] = version = raw_input("Version (PEP 386): ")
+        blueberrypy_config["version"] = version = raw_input("Version (PEP 386): ")
         if not valid_version_re.match(version):
             print("'%s' does not match the required version format." % version, file=sys.stderr)
         else:
             break
 
-    cherrypie_config["author"] = raw_input("Author name: ")
+    blueberrypy_config["author"] = raw_input("Author name: ")
 
     while True:
-        cherrypie_config["email"] = email = raw_input("Email: ")
+        blueberrypy_config["email"] = email = raw_input("Email: ")
         if not valid_email_re.match(email):
             print("'%s' is an invalid email address." % email, file=sys.stderr)
         else:
@@ -73,7 +73,7 @@ def create(args, config_dir=None):
         if use_controller and (not use_controller.startswith('y') and not use_controller.startswith('n')):
             print("Please answer Y or N.", file=sys.stderr)
         else:
-            cherrypie_config["use_controller"] = True if not use_controller or use_controller[0] == 'y' else False
+            blueberrypy_config["use_controller"] = True if not use_controller or use_controller[0] == 'y' else False
             break
 
     while True:
@@ -81,16 +81,16 @@ def create(args, config_dir=None):
         if use_rest_controller and (not use_rest_controller.startswith('y') and not use_rest_controller.startswith('n')):
             print("Please answer Y or N.", file=sys.stderr)
         else:
-            cherrypie_config["use_rest_controller"] = False if not use_rest_controller or use_rest_controller[0] == 'n' else True
+            blueberrypy_config["use_rest_controller"] = False if not use_rest_controller or use_rest_controller[0] == 'n' else True
             break
 
-    if cherrypie_config["use_controller"]:
+    if blueberrypy_config["use_controller"]:
         while True:
             use_jinja2 = raw_input("Use Jinja2 templating engine? [Y/n] ").lower()
             if use_jinja2 and (not use_jinja2.startswith('y') and not use_jinja2.startswith('n')):
                 print("Please answer Y or N.", file=sys.stderr)
             else:
-                cherrypie_config["use_jinja2"] = True if not use_jinja2 or use_jinja2[0] == 'y' else False
+                blueberrypy_config["use_jinja2"] = True if not use_jinja2 or use_jinja2[0] == 'y' else False
                 break
 
         while True:
@@ -98,7 +98,7 @@ def create(args, config_dir=None):
             if use_webassets and (not use_webassets.startswith('y') and not use_webassets.startswith('n')):
                 print("Please answer Y or N.", file=sys.stderr)
             else:
-                cherrypie_config["use_webassets"] = True if not use_webassets or use_webassets[0] == 'y' else False
+                blueberrypy_config["use_webassets"] = True if not use_webassets or use_webassets[0] == 'y' else False
                 break
 
     while True:
@@ -106,7 +106,7 @@ def create(args, config_dir=None):
         if use_redis and (not use_redis.startswith('y') and not use_redis.startswith('n')):
             print("Please answer Y or N.", file=sys.stderr)
         else:
-            cherrypie_config["use_redis"] = False if not use_redis or use_redis[0] == 'n' else True
+            blueberrypy_config["use_redis"] = False if not use_redis or use_redis[0] == 'n' else True
             break
 
     while True:
@@ -114,12 +114,12 @@ def create(args, config_dir=None):
         if use_sqlalchemy and (not use_sqlalchemy.startswith('y') and not use_sqlalchemy.startswith('n')):
             print("Please answer Y or N.", file=sys.stderr)
         else:
-            cherrypie_config["use_sqlalchemy"] = True if not use_sqlalchemy or use_sqlalchemy[0] == 'y' else False
-            cherrypie_config["sqlalchemy_url"] = raw_input("SQLAlchemy database connection URL: ")
+            blueberrypy_config["use_sqlalchemy"] = True if not use_sqlalchemy or use_sqlalchemy[0] == 'y' else False
+            blueberrypy_config["sqlalchemy_url"] = raw_input("SQLAlchemy database connection URL: ")
             break
 
 
-    create_project(cherrypie_config, dry_run=args.dry_run)
+    create_project(blueberrypy_config, dry_run=args.dry_run)
 
     footer = textwrap.dedent("""
     ===========================================================================
@@ -146,23 +146,23 @@ def create(args, config_dir=None):
     e.g. $ pip install MarkupSafe cdecimal hiredis
 
     You should also download the appropriate database driver if you have decided
-    to use CherryPie's SQLAlchemy support.
+    to use BlueberryPy's SQLAlchemy support.
 
-    For more information, the CherryPie documentation is available at
-    http://cherrypie.readthedocs.org.
+    For more information, the BlueberryPy documentation is available at
+    http://blueberrypy.readthedocs.org.
 
     Happy coding!
-    """.format(**cherrypie_config))
+    """.format(**blueberrypy_config))
 
     print(footer)
 
 def bundle(args, config_dir=None):
 
-    config = CherryPieConfiguration(config_dir=config_dir)
+    config = BlueberryPyConfiguration(config_dir=config_dir)
 
     assets_env = config.webassets_env
     if not assets_env:
-        raise CherryPieNotConfiguredError("Webassets configuration file '%s' is missing", config.bundles_yml_path)
+        raise BlueberryPyNotConfiguredError("Webassets configuration file '%s' is missing", config.bundles_yml_path)
 
     logging.basicConfig()
     logger = logging.getLogger(__name__)
@@ -182,7 +182,7 @@ def bundle(args, config_dir=None):
 
 def serve(args, config_dir=None):
 
-    config = CherryPieConfiguration(config_dir=config_dir)
+    config = BlueberryPyConfiguration(config_dir=config_dir)
 
     cpengine = cherrypy.engine
 
@@ -190,7 +190,7 @@ def serve(args, config_dir=None):
 
     if cpenviron:
         cherrypy.config.update({"environment": cpenviron})
-        config = CherryPieConfiguration(config_dir=config_dir,
+        config = BlueberryPyConfiguration(config_dir=config_dir,
                                         environment=cpenviron)
 
     if args.binding:
@@ -239,19 +239,19 @@ def serve(args, config_dir=None):
     if hasattr(cpengine, "console_control_handler"):
         cpengine.console_control_handler.subscribe()
 
-    from cherrypie.plugins import LoggingPlugin, SQLAlchemyPlugin
+    from blueberrypy.plugins import LoggingPlugin, SQLAlchemyPlugin
 
     if config.logging_config:
         cpengine.logging = LoggingPlugin(cpengine, config=config.logging_config)
 
     if config.use_redis:
-        from cherrypie.session import RedisSession
+        from blueberrypy.session import RedisSession
         cherrypy.lib.sessions.RedisSession = RedisSession
 
     if config.use_sqlalchemy:
         cpengine.sqlalchemy = SQLAlchemyPlugin(cpengine,
                                                config=config.sqlalchemy_config)
-        from cherrypie.tools import SQLAlchemySessionTool
+        from blueberrypy.tools import SQLAlchemySessionTool
         cherrypy.tools.orm_session = SQLAlchemySessionTool()
 
     cherrypy.config.update(config.app_config)
@@ -298,7 +298,7 @@ def console(args, config_dir=None):
 * for you automatically already.                                            *
 *****************************************************************************
 """
-    Console(CherryPieConfiguration(config_dir=config_dir)).interact(banner)
+    Console(BlueberryPyConfiguration(config_dir=config_dir)).interact(banner)
 
 def create_parser(config_dir=None):
     parser = argparse.ArgumentParser(prog="create",
@@ -318,7 +318,7 @@ def bundle_parser(config_dir=None):
     provided a configuration directory using the global option -c --config_dir.
     """)
 
-    config = CherryPieConfiguration(config_dir=config_dir)
+    config = BlueberryPyConfiguration(config_dir=config_dir)
     if not config.use_webassets:
         print(description)
         sys.exit(1)
@@ -374,17 +374,17 @@ def console_parser(config_dir=None):
     return parser
 
 def main():
-    description = textwrap.dedent("""CherryPie lightweight pluggable Web application framework command line interface.
+    description = textwrap.dedent("""BlueberryPy lightweight pluggable Web application framework command line interface.
     
-    Type 'cherrypie -h' or 'cherrypie --help' for general help.
-    Type 'cherrypie help <command>' for help on that specific command.
+    Type 'blueberrypy -h' or 'blueberrypy --help' for general help.
+    Type 'blueberrypy help <command>' for help on that specific command.
     
     commands:
     
     help                print this help or a command's if an argument is given
     create              create a project skeleton
-    console             CherryPie REPL for experimentations
-    bundle              bundles up web assets (type 'cherrypie help bundle' for details)
+    console             BlueberryPy REPL for experimentations
+    bundle              bundles up web assets (type 'blueberrypy help bundle' for details)
     serve               spawn a new CherryPy server process
     """)
 
@@ -399,7 +399,7 @@ def main():
 
     args, extraargs = parser.parse_known_args()
     if args.version:
-        print("CherryPie Version %s" % cherrypie.__version__)
+        print("BlueberryPy Version %s" % blueberrypy.__version__)
         parser.exit(0)
 
     def get_command_parser_and_callback(command):

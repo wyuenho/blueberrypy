@@ -3,7 +3,7 @@ import cherrypy
 from sqlalchemy import Column, Unicode
 from sqlalchemy.ext.declarative import declarative_base
 
-from cherrypie.plugins import SQLAlchemyPlugin
+from blueberrypy.plugins import SQLAlchemyPlugin
 
 class EngineBindingsTest(object):
 

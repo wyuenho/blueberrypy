@@ -1,6 +1,6 @@
 import cherrypy
 {% if use_jinja2 -%}
-from cherrypie.template_engine import get_template
+from blueberrypy.template_engine import get_template
 {%- endif %}
 
 class Root(object):

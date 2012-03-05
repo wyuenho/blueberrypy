@@ -1,1 +1,1 @@
-recursive-include src/cherrypie/project_template *
+recursive-include src/blueberrypy/project_template *

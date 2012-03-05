@@ -5,7 +5,7 @@ from email.header import Header, decode_header, make_header
 
 from lazr.smtptest.controller import QueueController
 
-from cherrypie.email import Mailer
+from blueberrypy.email import Mailer
 
 
 logger = logging.getLogger(__name__)

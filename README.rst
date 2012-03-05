@@ -1,19 +1,19 @@
-CherryPie
-=========
-The crust for your CherryPy
+BlueberryPy
+===========
+Same as CherryPy, just with different filling.
 
 
 
 What is it?
 -----------
-CherryPie is a CherryPy project skeleton generator and a collection of tools,
+BlueberryPy is a CherryPy project skeleton generator and a collection of tools,
 plugins and utilities for `CherryPy <http://cherrypy.org/>`_ - the minimalist
 Python web framework.
 
 
 What does it offer?
 -------------------
-CherryPie is offered as a set of CherryPy tools, WSPB plugins and extra utility
+BlueberryPy is offered as a set of CherryPy tools, WSPB plugins and extra utility
 modules. All the components are optional and completely pluggable without any
 intermodule dependencies, so you can safely pick and choose just the components
 you want.
@@ -34,10 +34,10 @@ you want.
 
 Installation
 ------------
-CherryPie is still unreleased, so for now you have to install it directly from
+BlueberryPy is still unreleased, so for now you have to install it directly from
 BitBucket::
 
-   $ pip install https://bitbucket.org/wyuenho/cherrypie
+   $ pip install https://bitbucket.org/wyuenho/blueberrypy
 
 
 Note: You should probably install it inside a `virtualenv <http://www.virtualenv.org/>`_.
@@ -46,24 +46,24 @@ Note: You should probably install it inside a `virtualenv <http://www.virtualenv
 Usage
 -----
 
-Once CherryPie is installed, a script called `cherrypie` should be available on
+Once BlueberryPy is installed, a script called `blueberrypy` should be available on
 your PATH.
 
 ::
 
-  usage: cherrypie [-h] [-v] [-c CONFIG_DIR] [command]
+  usage: blueberrypy [-h] [-v] [-c CONFIG_DIR] [command]
 
-  CherryPie lightweight pluggable Web application framework command line interface.
+  BlueberryPy lightweight pluggable Web application framework command line interface.
 
-     Type 'cherrypie -h' or 'cherrypie --help' for general help.
-     Type 'cherrypie help <command>' for help on that specific command.
+     Type 'blueberrypy -h' or 'blueberrypy --help' for general help.
+     Type 'blueberrypy help <command>' for help on that specific command.
 
   commands:
 
      help                print this help or a command's if an argument is given
      create              create a project skeleton
-     console             CherryPie REPL for experimentations
-     bundle              bundles up web assets (type 'cherrypie help bundle' for details)
+     console             BlueberryPy REPL for experimentations
+     bundle              bundles up web assets (type 'blueberrypy help bundle' for details)
      serve               spawn a new CherryPy server process
 
   positional arguments:
@@ -78,7 +78,7 @@ your PATH.
 
 To create a project skeleton::
 
-   $ cherrypie create
+   $ blueberrypy create
 
 After you've answered a couple of questions, you should see something similar to
 this::
@@ -112,7 +112,7 @@ Finally, you need to install a database driver such as `psycopg2`::
 
 Now your package is ready to be served::
 
-   $ cherrypie serve
+   $ blueberrypy serve
 
 Type `http://localhost:8080` into your browser's location bar and voila!
 
@@ -124,13 +124,12 @@ TODO
 #. project skeleton test templates
 #. test config
 #. test script output
-#. test cherrypie.util
+#. test blueberrypy.util
 #. test template engine
-#. write readme
 #. write sphinx doc
-#. integrate with weberror
-#. integrate with geoalchemy, shapely, geojson
-#. modularize skeleton generation
 #. add config files to cherrypy's auto watch
+#. minimalist, conditional validators for json utils and form inputs
+#. integrate with weberror, geoalchemy, shapely, geojson
 #. babel integration
 #. request handler cache decorator
+#. modularize skeleton generation
