@@ -283,6 +283,11 @@ def serve(args, config_dir=None):
         rest_script_name = controllers_config.get("rest_script_name", "api")
         cherrypy.tree.mount(None, script_name=rest_script_name, config=rest_config)
 
+    # Add the blueberrypy config files into CP's autoreload monitor
+    # Jinja2 templates are monitored by Jinja2 itself and will autoreload if needed
+    for path in config.config_file_paths:
+        cpengine.autoreload.files.add(path)
+
     try:
         cpengine.start()
     except:

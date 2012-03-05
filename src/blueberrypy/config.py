@@ -50,6 +50,21 @@ class BlueberryPyConfiguration(object):
                 with open(self.app_yml_path) as app_yml:
                     self.app_config = load(app_yml, Loader)
 
+    @property
+    def config_file_paths(self):
+        paths = []
+
+        if self.app_yml_path and os.path.exists(self.app_yml_path):
+            paths.append(self.app_yml_path)
+
+        if self.logging_yml_path and os.path.exists(self.logging_yml_path):
+            paths.append(self.logging_yml_path)
+
+        if self.bundles_yml_path and os.path.exists(self.bundles_yml_path):
+            paths.append(self.bundles_yml_path)
+
+        return paths
+
     def __ensure_configured(f):
         def _f(self, *args, **kwargs):
             if hasattr(self, "app_config") and self.app_config:
