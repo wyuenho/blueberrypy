@@ -9,8 +9,10 @@ webassets>=0.6
 python-dateutil<2.0
 cdecimal>=2.3
 MarkupSafe>=0.15
+simplejson>=2.3.2
 
 coverage>=3.5.1
+decorator>=3.3.2
 nose>=1.1.2
 nose-testconfig>=0.8
 openstack.nose-plugin>=0.5
