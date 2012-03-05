@@ -126,7 +126,6 @@ TODO
 #. test script output
 #. test template engine
 #. write sphinx doc
-#. add config files to cherrypy's auto watch
 #. minimalist, conditional validators for json utils and form inputs
 #. integrate with weberror, geoalchemy, shapely, geojson
 #. babel integration
