@@ -1,6 +1,6 @@
 BlueberryPy
 ===========
-Same as CherryPy, just with different filling.
+Same as CherryPy, just with a different filling.
 
 
 
@@ -18,8 +18,8 @@ modules. All the components are optional and completely pluggable without any
 intermodule dependencies, so you can safely pick and choose just the components
 you want.
 
-- SQLAlchemy ORM integration
-- Per-request SQLAlchemy ORM session
+- SQLAlchemy ORM plugin with two-phase commit support
+- Per-request SQLAlchemy ORM session tool
 - Redis session storage
 - Jinja2 template engine
 - Webassets asset pipeline integrated with Jinja2
@@ -84,7 +84,7 @@ After you've answered a couple of questions, you should see something similar to
 this::
 
    ===========================================================================
-   Your project skeleton has been created under /Users/wyuenho/Documents/workspace/cptest.
+   Your project skeleton has been created under /path/to/your/project .
    
    
    Subsystems chosen
