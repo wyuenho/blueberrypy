@@ -37,9 +37,9 @@ class Group(Base):
     name = Column(Unicode, primary_key=True)
 
 
-saconf = {'sqlalchemy_engine_tests._test_cp_plugins_engine_bindings.User':
+saconf = {'sqlalchemy_engine_tests._test_plugins_engine_bindings.User':
           {'url': "sqlite://"},
-          'sqlalchemy_engine_tests._test_cp_plugins_engine_bindings.Group':
+          'sqlalchemy_engine_tests._test_plugins_engine_bindings.Group':
           {'url': "sqlite://"}}
 cherrypy.engine.sqlalchemy = SQLAlchemyPlugin(cherrypy.engine, saconf)
 cherrypy.config.update({'environment': 'test_suite',

@@ -248,8 +248,8 @@ class SQLAlchemySessionToolTwoPhaseTest(helper.CPWebCase):
             raise_passable_exception_query.exposed = True
             raise_passable_exception_query._cp_config = {'tools.orm_session.bindings': [User]}
 
-        saconf = {'sqlalchemy_engine_tests.test_cp_tools.User': get_config('sqlalchemy_engine'),
-                  'sqlalchemy_engine_tests.test_cp_tools.Address': get_config('sqlalchemy_engine')}
+        saconf = {'sqlalchemy_engine_tests.test_tools.User': get_config('sqlalchemy_engine'),
+                  'sqlalchemy_engine_tests.test_tools.Address': get_config('sqlalchemy_engine')}
         cherrypy.engine.sqlalchemy = SQLAlchemyPlugin(cherrypy.engine, saconf)
         cherrypy.config.update({'engine.sqlalchemy.on': True})
         cherrypy.tree.mount(TwoPhase())

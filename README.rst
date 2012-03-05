@@ -124,7 +124,6 @@ TODO
 #. project skeleton test templates
 #. test config
 #. test script output
-#. test blueberrypy.util
 #. test template engine
 #. write sphinx doc
 #. add config files to cherrypy's auto watch

@@ -8,10 +8,9 @@ try:
 except ImportError:
     import json
 
-from datetime import date, time, datetime
+from datetime import date, time, datetime, timedelta
 
 from dateutil.parser import parse as parse_date
-from cherrypy import HTTPError
 
 try:
     from geoalchemy.base import SpatialElement
@@ -48,6 +47,8 @@ def to_json(instance, includes=None, excludes=None, serialize=False):
                 v = {"time": v.isoformat()}
             elif isinstance(v, date):
                 v = {"date": v.isoformat()}
+            elif isinstance(v, timedelta):
+                v = {"interval": v.seconds}
             elif geos_support and isinstance(v, SpatialElement):
                 v = asGeoJSON(v)
             doc[k] = v
@@ -56,7 +57,7 @@ def to_json(instance, includes=None, excludes=None, serialize=False):
         return json.dumps(doc)
     return doc
 
-def from_json(doc, instance, includes=None, excludes=None):
+def from_json(doc, instance, excludes=None):
 
     if isinstance(doc, basestring):
         doc = json.loads(doc)
@@ -64,27 +65,26 @@ def from_json(doc, instance, includes=None, excludes=None):
     if not isinstance(doc, dict):
         raise TypeError(doc, "doc must be a dict")
 
-    includes = set([includes] if isinstance(includes, basestring) else includes and list(includes) or [])
     excludes = set([excludes] if isinstance(excludes, basestring) else excludes and list(excludes) or [])
     attrs = set(instance.__table__.c.keys())
-    attrs = includes | attrs - excludes
+    attrs = attrs - excludes
 
     for k, v in doc.iteritems():
 
         if k in attrs:
             if isinstance(v, dict):
                 if "date" in v:
-                    v = parse_date(v["date"])
+                    v = parse_date(v["date"]).date()
                 elif "time" in v:
-                    v = parse_date(v["time"])
+                    v = parse_date(v["time"]).time()
                 elif "datetime" in v:
                     v = parse_date(v["datetime"])
+                elif "interval" in v:
+                    v = timedelta(seconds=v["interval"])
                 elif geos_support and "type" in v:
                     v = asShape(v)
 
             setattr(instance, k, v)
-        else:
-            raise HTTPError(400)
 
     return instance
 

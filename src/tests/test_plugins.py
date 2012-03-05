@@ -16,12 +16,12 @@ class SQLAlchemyPluginTest(helper.CPWebCase):
 
         p = helper.CPProcess(ssl=(self.scheme.lower() == 'https'))
         p.write_conf(extra='test_case_name: "test_engine_bindings"')
-        p.start(imports='tests._test_cp_plugins_engine_bindings')
+        p.start(imports='tests._test_plugins_engine_bindings')
 
         try:
             self.getPage("/engine_bindings")
             self.assertStatus(200)
-            self.assertEqual("[(<class 'tests._test_cp_plugins_engine_bindings.User'>, Engine(sqlite://)), (<class 'tests._test_cp_plugins_engine_bindings.Group'>, Engine(sqlite://))]", self.body)
+            self.assertEqual("[(<class 'tests._test_plugins_engine_bindings.User'>, Engine(sqlite://)), (<class 'tests._test_plugins_engine_bindings.Group'>, Engine(sqlite://))]", self.body)
         finally:
             self.getPage("/exit")
         p.join()
@@ -32,7 +32,7 @@ class SQLAlchemyPluginTest(helper.CPWebCase):
 
         p = helper.CPProcess(ssl=(self.scheme.lower() == 'https'))
         p.write_conf(extra='test_case_name: "test_engine"')
-        p.start(imports='tests._test_cp_plugins_engine')
+        p.start(imports='tests._test_plugins_engine')
 
         try:
             self.getPage("/engine")
