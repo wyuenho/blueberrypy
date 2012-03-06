@@ -76,7 +76,7 @@ class SQLAlchemyPlugin(SimplePlugin):
     def _configure_engines(self):
         """Sets up engine bindings based on the given config.
         
-        Given a configuration dictionary, and optionaly a key `prefix`, this
+        Given a configuration dictionary, and optionally a key `prefix`, this
         method iterates all its sections looking for sections with names that
         start with `prefix`. The suffix of the name is fully qualified name to
         a model. A SQLAlchemy engine is then set up with the section value as
@@ -93,12 +93,12 @@ class SQLAlchemyPlugin(SimplePlugin):
         
             # The model to be imported starts after the _ following the prefix
             [sqlalchemy_engine_myproject.models.User]
-            sqlalchemy.url = ...
-            sqlalchemy.pool_recycle = ...
+            url = ...
+            pool_recycle = ...
             
             # If this section exists, only 1 engine will be configured
             [sqlalchemy_engine]
-            sqlalchemy.url = ...
+            url = ...
         
         
         :py:func: sqlalchemy.engine_from_config
