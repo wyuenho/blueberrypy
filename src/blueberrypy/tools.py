@@ -66,10 +66,11 @@ class SQLAlchemySessionTool(Tool):
         request.hooks.attach("before_finalize", self.before_finalize,
                              priority=before_finalize_priority)
 
-        after_error_response_priority = conf.pop("after_error_response_priority", None)
+        after_error_response_priority = conf.pop("after_error_response_priority",
+                                                 None)
         if after_error_response_priority is None:
-            after_error_response_priority = getattr(self.after_error_response, "priority",
-                                               self._priority)
+            after_error_response_priority = getattr(self.after_error_response,
+                                                    "priority", self._priority)
         request.hooks.attach("after_error_response", self.after_error_response,
                              priority=after_error_response_priority)
 
