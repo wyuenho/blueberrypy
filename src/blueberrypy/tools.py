@@ -19,15 +19,16 @@ class SQLAlchemySessionTool(Tool):
     """A CherryPy tool to process SQLAlchemy ORM sessions for requests.
 
     This tools sets up a scoped, possibly multi-engine SQLAlchemy ORM session to
-    `cherrypy.request.orm_session` at the beginning of a request. At the end of
-    the request, this tool will commit the session if neccessary, and rollback
-    if errors occured. Once this is done the session is removed from the
-    request.
+    `cherrypy.request.orm_session` at the beginning of a request. This tool does
+    not commit changes for you automatically, you must do you explicitly inside
+    your controller code. At the end of each requests, this tool will rollback
+    if errors occured. The session is guaranteed to be removed from the request
+    in the end.
 
-    As this tool hooks up _2_ callables to the request, this tools will also
-    accept 2 `priority` options - `on_start_resource_priority` and
-    `before_finalize_priority`. The `priority` option is still accepted as a
-    default for both `attach` and `finalize`.
+    As this tool hooks up _3_ callables to the request, this tools will also
+    accept 3 `priority` options - `on_start_resource_priority`, 
+    `before_finalize_priority` and `after_error_response`. The `priority` option
+    is still accepted as a default for all 3 hook points.
     """
 
     def __init__(self):
