@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-install_requires = [{% if use_sqlalchemy -%}'SQLAlchemy'{% endif %}{% if use_redis -%}, 'redis'{% endif %}{% if use_webassets -%}, 'webasset'{% endif %}{% if use_rest_controller -%}, 'Routes'{% endif %}]
+install_requires = [{% if use_sqlalchemy -%}'SQLAlchemy'{% endif %}{% if use_redis -%}, 'redis'{% endif %}{% if use_webassets -%}, 'webassets'{% endif %}{% if use_rest_controller -%}, 'Routes'{% endif %}]
 
 setup(name='{{package}}',
       version='{{version}}',
