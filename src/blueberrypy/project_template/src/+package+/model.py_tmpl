@@ -5,31 +5,16 @@ from datetime import datetime, timedelta
 from hashlib import sha256
 
 from sqlalchemy import Column, Integer, Unicode, UnicodeText, Date, DateTime, \
-    String, BigInteger, Enum, SmallInteger, func
+    String, BigInteger, Enum, SmallInteger, func, text
 from sqlalchemy.orm import deferred
-from sqlalchemy.orm.interfaces import PropComparator
-from sqlalchemy.orm import synonym
-from sqlalchemy.ext.declarative import synonym_for, declarative_base, \
-    comparable_using
-
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.hybrid import hybrid_property
 
 Base = declarative_base()
 metadata = Base.metadata
 
 
-__all__ = ["User"]
-
-
-class _AgeComparator(PropComparator):
-
-    def __clause_element__(self):
-        return func.date_part("year", func.age(self.mapper.c.date_of_birth))
-
-    def operate(self, op, *args, **kwargs):
-        return op(self.__clause_element__(), *args, **kwargs)
-
-    def reverse_operate(self, op, *args, **kwargs):
-        return op(self.__clause_element__(), *args, **kwargs)
+__all__ = ["User", "Venue"]
 
 
 class User(Base):
@@ -52,8 +37,7 @@ class User(Base):
 
     _salt = Column("salt", String(12))
 
-    @synonym_for("_salt")
-    @property
+    @hybrid_property
     def salt(self):
         """Generates a cryptographically random salt and sets its Base64 encoded
         version to the salt column, and returns the encoded salt.
@@ -65,13 +49,6 @@ class User(Base):
 
     # 40 is the length of the SHA-256 encoded string length
     _password = Column("password", Unicode(64))
-    def __set_password(self, password):
-        self._password = self.__encrypt_password(password,
-                                                 b64decode(self.salt))
-    def __get_password(self):
-        return self._password
-    password = synonym("_password", descriptor=property(__get_password,
-                                                        __set_password))
 
     def __encrypt_password(self, password, salt):
         """
@@ -104,6 +81,15 @@ class User(Base):
 
         return hashed_password
 
+    @hybrid_property
+    def password(self):
+        return self._password
+
+    @password.setter
+    def password(self, password):
+        self._password = self.__encrypt_password(password,
+                                                 b64decode(self.salt))
+
     def validate_password(self, password):
         """Check the password against existing credentials.
 
@@ -118,8 +104,7 @@ class User(Base):
     date_of_birth = Column(Date)
     bio = deferred(Column(UnicodeText(65536)))
 
-    @comparable_using(_AgeComparator)
-    @property
+    @hybrid_property
     def age(self):
         """Property calculated from (current time - :attr:`User.date_of_birth` - leap days)"""
         if self.date_of_birth:
@@ -131,12 +116,13 @@ class User(Base):
             return (age.days - calendar.leapdays(birthday.year, today.year)) / 365
         return -1
 
-    locale = Column(String(10), nullable=False)
-    timezone = Column(SmallInteger, nullable=False)
+    @age.expression
+    def age(cls):
+        return func.date_part("year", func.age(cls.date_of_birth))
 
-    # No server_default set here,
-    # add 'server_default=text("YOUR RDBMS-SPECIFIC TIMESTAMP FUNCTION")' if
-    # that's what you want
-    created = Column(DateTime, default=datetime.utcnow, nullable=False)
-    lastmodified = Column(DateTime, default=datetime.utcnow, nullable=False)
-    lastaccessed = Column(DateTime, default=datetime.utcnow, nullable=False)
+    locale = Column(String(10))
+    timezone = Column(SmallInteger)
+
+    created = Column(DateTime, default=datetime.utcnow, server_default=text("now()"), nullable=False)
+    lastmodified = Column(DateTime, default=datetime.utcnow, server_default=text("now()"), nullable=False)
+    lastaccessed = Column(DateTime, default=datetime.utcnow, server_default=text("now()"), nullable=False)

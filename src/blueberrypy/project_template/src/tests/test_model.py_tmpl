@@ -1,0 +1,77 @@
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
+from datetime import date
+
+import decorator
+from sqlalchemy import *
+from sqlalchemy.exc import *
+from sqlalchemy.orm import sessionmaker, scoped_session
+
+from testconfig import config as testconfig
+
+from foodbud.model import metadata, User
+
+
+engine = engine_from_config(testconfig['sqlalchemy_engine'], '')
+Session = scoped_session(sessionmaker(engine))
+metadata.bind = engine
+
+
+@decorator.decorator
+def orm_session(func, *args, **kwargs):
+    session = Session()
+    try:
+        return func(*args, **kwargs)
+    except:
+        raise
+    finally:
+        session.close()
+
+
+class ModelTestFixture(object):
+
+    def setUp(self):
+        metadata.create_all()
+
+        super(ModelTestFixture, self).setUp()
+
+    def tearDown(self):
+        metadata.drop_all()
+
+        super(ModelTestFixture, self).tearDown()
+
+
+class UserTest(ModelTestFixture, unittest.TestCase):
+
+    @orm_session
+    def test_constructor(self):
+
+        session = Session()
+
+        user = User(displayname=u"alice in wonderland",
+                    email=u"alice@wonderland.com",
+                    password=u"wonderlandpass",
+                    sex=u"m",
+                    date_of_birth=date.today())
+
+        session.add(user)
+        session.commit()
+
+    @orm_session
+    def test_passwords(self):
+
+        session = Session()
+
+        user = User(displayname=u"displayname",
+                    email=u"abc@example.com",
+                    sex=u"m",
+                    date_of_birth=date(1980, 1, 1))
+        user.password = u"password"
+        session.add(user)
+        session.commit()
+
+        self.assertTrue(user.validate_password(u"password"))
+        from base64 import b64decode
+        self.assertEqual(user._User__encrypt_password(u"password", b64decode(user.salt)), user.password)
