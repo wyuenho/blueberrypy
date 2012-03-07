@@ -1,0 +1,37 @@
+import decorator
+from sqlalchemy import *
+from sqlalchemy.orm import sessionmaker, scoped_session
+
+from testconfig import config as testconfig
+
+from {{package}}.model import *
+from {{package}}.model import metadata
+
+
+engine = engine_from_config(testconfig['sqlalchemy_engine'], '')
+Session = scoped_session(sessionmaker(engine))
+metadata.bind = engine
+
+
+@decorator.decorator
+def orm_session(func, *args, **kwargs):
+    session = Session()
+    try:
+        return func(*args, **kwargs)
+    except:
+        raise
+    finally:
+        session.close()
+
+
+class DBTestFixture(object):
+
+    def setUp(self):
+        metadata.create_all()
+
+        super(DBTestFixture, self).setUp()
+
+    def tearDown(self):
+        metadata.drop_all()
+
+        super(DBTestFixture, self).tearDown()

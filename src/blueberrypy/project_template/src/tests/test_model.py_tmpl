@@ -4,46 +4,14 @@ except ImportError:
     import unittest
 from datetime import date
 
-import decorator
 from sqlalchemy import *
 from sqlalchemy.exc import *
-from sqlalchemy.orm import sessionmaker, scoped_session
 
-from testconfig import config as testconfig
+from {{package}}.model import User
 
-from foodbud.model import metadata, User
+from tests.helper import DBTestFixture, orm_session, Session
 
-
-engine = engine_from_config(testconfig['sqlalchemy_engine'], '')
-Session = scoped_session(sessionmaker(engine))
-metadata.bind = engine
-
-
-@decorator.decorator
-def orm_session(func, *args, **kwargs):
-    session = Session()
-    try:
-        return func(*args, **kwargs)
-    except:
-        raise
-    finally:
-        session.close()
-
-
-class ModelTestFixture(object):
-
-    def setUp(self):
-        metadata.create_all()
-
-        super(ModelTestFixture, self).setUp()
-
-    def tearDown(self):
-        metadata.drop_all()
-
-        super(ModelTestFixture, self).tearDown()
-
-
-class UserTest(ModelTestFixture, unittest.TestCase):
+class UserTest(DBTestFixture, unittest.TestCase):
 
     @orm_session
     def test_constructor(self):
