@@ -61,7 +61,7 @@ class Console(InteractiveConsole):
 
         package_name = self.config.project_metadata and self.config.project_metadata["package"]
         if package_name:
-            model = __import__("model", globals(), locals(), [package_name])
+            model = __import__(package_name + ".model", globals(), locals(), ["model"])
             if getattr(model, '__all__'):
                 for name in model.__all__:
                     lcls[name] = getattr(model, name)
