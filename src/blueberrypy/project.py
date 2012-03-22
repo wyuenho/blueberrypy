@@ -83,15 +83,15 @@ def create_project(blueberrypy_config, dry_run=False,
 
                     process_dir(root, relpath)
                 else:
-                    with open(fullpath) as infile:
-                        tmpl = jinja2_env.from_string(infile.read())
-
                     dest_fullpath = os.path.join(dest, replaced_relpath)
 
                     head, tail = os.path.split(dest_fullpath)
 
                     if tail.endswith("_tmpl"):
                         dest_fullpath = os.path.join(head, tail[:-5])
+
+                        with open(fullpath) as infile:
+                            tmpl = jinja2_env.from_string(infile.read())
 
                         if not dry_run:
                             with open(dest_fullpath, 'w') as outfile:
