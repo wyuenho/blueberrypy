@@ -104,11 +104,7 @@ be automatically installed for you as well::
 
 You can install the optional speedup packages too::
 
-   $ pip install MarkupSafe cdecimal hiredis
-
-Finally, you need to install a database driver such as `psycopg2`::
-
-   $ pip install psycopg2
+   $ pip install blueberrypy[speedups]
 
 Now your package is ready to be served::
 
@@ -121,13 +117,10 @@ Happy coding!
 TODO
 ----
 
-#. project skeleton test templates
-#. test config
-#. test script output
-#. test template engine
 #. write sphinx doc
 #. minimalist, conditional validators for json utils and form inputs
 #. integrate with weberror, geoalchemy, shapely, geojson
 #. babel integration
 #. request handler cache decorator
 #. modularize skeleton generation
+#. better test coverage
