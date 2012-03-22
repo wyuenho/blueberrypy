@@ -115,7 +115,10 @@ def create(args, config_dir=None):
             print("Please answer Y or N.", file=sys.stderr)
         else:
             blueberrypy_config["use_sqlalchemy"] = True if not use_sqlalchemy or use_sqlalchemy[0] == 'y' else False
-            blueberrypy_config["sqlalchemy_url"] = raw_input("SQLAlchemy database connection URL: ")
+            blueberrypy_config["sqlalchemy_url"] = sqlalchemy_url = raw_input("SQLAlchemy database connection URL: ")
+            if sqlalchemy_url.strip():
+                from sqlalchemy.engine import url as sa_url
+                blueberrypy_config["driver"] = sa_url.make_url(sqlalchemy_url).get_dialect().driver
             break
 
 
@@ -143,10 +146,7 @@ def create(args, config_dir=None):
     respectively. You may also install 'hiredis' if you have opted for the Redis
     session storage.
 
-    e.g. $ pip install MarkupSafe cdecimal hiredis
-
-    You should also download the appropriate database driver if you have decided
-    to use BlueberryPy's SQLAlchemy support.
+    e.g. $ pip install blueberrypy[speedups]
 
     For more information, the BlueberryPy documentation is available at
     http://blueberrypy.readthedocs.org.
@@ -398,7 +398,7 @@ def main():
     parser.add_argument("-v", "--version", action="store_true", default=False,
                         help="print version information and exit.")
 
-    parser.add_argument("-c", "--config_dir", help="path to the config directory")
+    parser.add_argument("-C", "--config_dir", help="path to the config directory")
 
     parser.add_argument("command", nargs="?", default="help", help="the action to perform")
 
