@@ -3,11 +3,6 @@ import os
 from cherrypy.test import helper
 
 
-"""
-:see: `blueberrypy.test.test_states:PluginTests`, `blueberrypy.test.helper.CPProcess`, and `blueberrypy.test._test_states_demo:Root`
-"""
-
-
 class SQLAlchemyPluginTest(helper.CPWebCase):
 
     def test_engine_bindings(self):

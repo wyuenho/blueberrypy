@@ -10,11 +10,6 @@ except:
     setup_requires.append('argparse')
 
 try:
-    import importlib
-except:
-    setup_requires.append('importlib')
-
-try:
     from logging.config import dictConfig
 except:
     setup_requires.append('logutils')
@@ -45,7 +40,7 @@ setup(name='blueberrypy',
                    'Topic :: Utilities'],
       license='BSD',
       package_dir={'': 'src'},
-      packages=find_packages('src', exclude=['test**']),
+      packages=find_packages('src'),
       include_package_data=True,
       namespace_packages=['blueberrypy'],
       entry_points={'console_scripts': ['blueberrypy = blueberrypy.command:main']},

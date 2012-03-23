@@ -5,6 +5,7 @@ test.cfg
 doc/_build
 .coverage
 cover
+.tox
 
 # Python temp files
 *.pyc

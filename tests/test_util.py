@@ -2,6 +2,9 @@ import hashlib
 import hmac
 import unittest
 
+if not hasattr(unittest.TestCase, "assertIn"):
+    import unittest2 as unittest
+
 from base64 import b64encode
 from datetime import date, time, datetime, timedelta
 

@@ -1,5 +1,8 @@
 import unittest
 
+if not hasattr(unittest.TestCase, "assertIn"):
+    import unittest2 as unittest
+
 try:
     import simplejson as json
 except ImportError:
@@ -35,7 +38,7 @@ class Address(Base):
     address = Column(Unicode(128), nullable=False, unique=True)
 
 
-class SQLAlchemySessionToolSingleEngineTest(helper.CPWebCase):
+class SQLAlchemySessionToolSingleEngineTest(helper.CPWebCase, unittest.TestCase):
 
     engine = engine_from_config(get_config('sqlalchemy_engine'), '')
 
@@ -156,8 +159,8 @@ class SQLAlchemySessionToolSingleEngineTest(helper.CPWebCase):
         self.assertEqual(u'bob', json_resp['name'])
         self.assertStatus(200)
 
-@unittest.skip
-class SQLAlchemySessionToolTwoPhaseTest(helper.CPWebCase):
+
+class SQLAlchemySessionToolTwoPhaseTest(helper.CPWebCase, unittest.TestCase):
 
     engine = engine_from_config(get_config('sqlalchemy_engine'), '')
     engine_bindings = {User: engine, Address: engine}
