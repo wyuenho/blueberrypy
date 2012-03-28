@@ -5,7 +5,7 @@ import sys
 try:
     from logging.config import dictConfig
 except:
-    from logutils.dictConfig import dictConfig
+    from logutils.dictconfig import dictConfig
 
 import cherrypy
 
