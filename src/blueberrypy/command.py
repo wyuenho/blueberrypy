@@ -191,7 +191,7 @@ def serve(args, config_dir=None):
     if cpenviron:
         cherrypy.config.update({"environment": cpenviron})
         config = BlueberryPyConfiguration(config_dir=config_dir,
-                                        environment=cpenviron)
+                                          environment=cpenviron)
 
     if args.binding:
         address, port = args.binding.strip().split(":")
@@ -404,7 +404,7 @@ def main():
 
     args, extraargs = parser.parse_known_args()
     if args.version:
-        print("BlueberryPy Version %s" % blueberrypy.__version__)
+        print("BlueberryPy version %s" % blueberrypy.__version__)
         parser.exit(0)
 
     def get_command_parser_and_callback(command):
