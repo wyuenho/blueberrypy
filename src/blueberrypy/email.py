@@ -7,6 +7,7 @@ import time
 
 from email.header import Header
 from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from email.utils import parseaddr, formataddr
 
 
@@ -31,7 +32,7 @@ class Mailer(object):
         self.debug = debug
         self.connection_retries = connection_retries
 
-    def get_connection(self):
+    def _get_connection(self):
         if self.ssl:
             connection = smtplib.SMTP_SSL(self.host, self.port,
                                           self.local_hostname,
@@ -67,9 +68,12 @@ class Mailer(object):
         to_header.append(formataddr((to_realname, to_addr)))
         message['To'] = to_header
 
-        connection = self.get_connection()
+        self._send(message, from_addr, to_addr)
+
+    def _send(self, mime_message, from_, to_):
+        connection = self._get_connection()
         try:
-            connection.sendmail(from_addr, to_addr, message.as_string(False))
+            connection.sendmail(from_, to_, mime_message.as_string(False))
         except smtplib.SMTPHeloError, e:
             logger.error(e, exc_info=True)
             raise
@@ -87,7 +91,7 @@ class Mailer(object):
                 try:
                     logger.warn("Server disconnected, retrying in %s seconds...", exp_timeout)
                     time.sleep(exp_timeout)
-                    connection.sendmail(from_addr, to_addr, message.as_string(False))
+                    connection.sendmail(from_, to_, mime_message.as_string(False))
                     break
                 except smtplib.SMTPException, e:
                     tries = tries + 1
@@ -99,3 +103,31 @@ class Mailer(object):
         finally:
             connection.quit()
 
+    def send_html_email(self, to_, from_=None, subject=None, text=None,
+                        html=None, charset="utf-8"):
+
+        message = MIMEMultipart("alternative")
+
+        if subject:
+            subject_header = Header()
+            subject = unicode(subject, charset) if isinstance(subject, str) else subject
+            subject_header.append(subject.strip())
+            message["Subject"] = subject_header
+
+        from_ = from_ or self.default_sender
+        from_ = unicode(from_, charset) if isinstance(from_, str) else from_
+        from_realname, from_addr = parseaddr(from_)
+        from_header = Header()
+        from_header.append(formataddr((from_realname, from_addr)))
+        message['From'] = from_header
+
+        to_ = unicode(to_, charset) if isinstance(to_, str) else to_
+        to_realname, to_addr = parseaddr(to_)
+        to_header = Header()
+        to_header.append(formataddr((to_realname, to_addr)))
+        message['To'] = to_header
+
+        message.attach(MIMEText(text, "plain", charset))
+        message.attach(MIMEText(html, "html", charset))
+
+        self._send(message, from_addr, to_addr)
