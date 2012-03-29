@@ -8,6 +8,5 @@ setup(name='{{package}}',
       author_email='{{email}}',
       package_dir={'': 'src'},
       packages=find_packages('src', exclude=["test**"]),
-      namespace_packages=['{{package}}'],
       install_requires=install_requires,
       zip_safe=False)
