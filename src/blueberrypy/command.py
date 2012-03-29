@@ -180,6 +180,44 @@ def bundle(args, config_dir=None):
     elif args.clean:
         assets_cli.clean()
 
+def setup_weberror_environment(blueberrypy_config):
+
+    cherrypy._cpconfig.environments["weberror"] = {
+        "log.wsgi": True,
+        "request.throw_errors": True,
+        "log.screen": False,
+        "engine.autoreload_on": False
+    }
+
+    def remove_error_options(section):
+        section.pop("request.handler_error", None)
+        section.pop("request.error_response", None)
+        section.pop("tools.err_redirect.on", None)
+        section.pop("tools.log_headers.on", None)
+        section.pop("tools.log_tracebacks.on", None)
+
+        for k in section.copy().iterkeys():
+            if k.startswith("error_page.") or \
+                    k.startswith("request.error_page."):
+                section.pop(k)
+
+    for section_name, section in blueberrypy_config.app_config.iteritems():
+        if section_name.startswith("/") or section_name == "global":
+            remove_error_options(section)
+
+    wsgi_pipeline = []
+    if "/" in blueberrypy_config.app_config:
+        wsgi_pipeline = blueberrypy_config.app_config["/"].get("wsgi.pipeline", [])
+    else:
+        blueberrypy_config.app_config["/"] = {}
+
+    from weberror.evalexception import EvalException
+    wsgi_pipeline.insert(0, ("evalexc", EvalException))
+
+    blueberrypy_config.app_config["/"]["wsgi.pipeline"] = wsgi_pipeline
+
+    return blueberrypy_config
+
 def serve(args, config_dir=None):
 
     config = BlueberryPyConfiguration(config_dir=config_dir)
@@ -189,9 +227,13 @@ def serve(args, config_dir=None):
     cpenviron = args.environment or config.cherrypy_environment
 
     if cpenviron:
-        cherrypy.config.update({"environment": cpenviron})
         config = BlueberryPyConfiguration(config_dir=config_dir,
                                           environment=cpenviron)
+
+        if cpenviron == "weberror":
+            config = setup_weberror_environment(config)
+
+        cherrypy.config.update({"environment": cpenviron})
 
     if args.binding:
         address, port = args.binding.strip().split(":")

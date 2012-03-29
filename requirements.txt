@@ -9,6 +9,7 @@ python-dateutil<2.0
 cdecimal>=2.3
 MarkupSafe>=0.15
 simplejson>=2.4.0
+WebError>=0.10.3
 
 coverage>=3.5.1
 decorator>=3.3.2
