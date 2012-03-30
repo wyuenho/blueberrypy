@@ -103,9 +103,9 @@ class Console(InteractiveConsole):
             self.write(os.linesep)
             session = self.locals.get("session")
             if session is not None and \
-                getattr(session, "new", None) or \
-                getattr(session, "dirty", None) or \
-                getattr(session, "deleted", None):
+                session.new or \
+                session.dirty or \
+                session.deleted:
 
                 r = raw_input("Do you wish to commit your "
                               "database changes? [Y/n]")
