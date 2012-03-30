@@ -1,7 +1,5 @@
 import logging
 
-from sys import exc_info
-
 import cherrypy
 from cherrypy import Tool
 
@@ -103,19 +101,14 @@ class SQLAlchemySessionTool(Tool):
         session.remove()
 
     def after_error_response(self):
-
         req = cherrypy.request
         session = req.orm_session
 
-        typ, value, trace = exc_info()
-
-        logger.error(value, exc_info=True)
-
         try:
-            # Rollback if exception raised in request handler
-            session.rollback() # undoes changes in the session
+            session.rollback()
             session.expunge_all()
         except SQLAlchemyError, e:
             logger.error(e, exc_info=True)
+            cherrypy.log.error(msg=e, severity=logging.ERROR, traceback=True)
         finally:
             session.remove()
