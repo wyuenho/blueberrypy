@@ -51,7 +51,9 @@ controllers:
   rest_config:
     /:
       tools.proxy.on: true
+      {% if use_sqlalchemy -%}
       tools.orm_session.on: true
+      {%- endif %}
       error_page.default: !!python/name:{{package}}.rest_controller.generic_error_handler
       request.error_response: !!python/name:{{package}}.rest_controller.unexpected_error_hander
   {%- endif %}

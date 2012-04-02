@@ -48,7 +48,9 @@ controllers:
   rest_config:
     /:
       tools.proxy.on: true
+      {% if use_sqlalchemy -%}
       tools.orm_session.on: true
+      {%- endif %}
   {%- endif %}
   {% if not use_rest_controller and not use_controller -%}
   controller:
