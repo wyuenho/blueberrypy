@@ -4,6 +4,7 @@ import logging
 import smtplib
 import socket
 import time
+import warnings
 
 from email.header import Header
 from email.mime.text import MIMEText
@@ -19,7 +20,7 @@ class Mailer(object):
     def __init__(self, host='', port=0, local_hostname=None,
                  timeout=socket._GLOBAL_DEFAULT_TIMEOUT,
                  ssl=False, keyfile=None, certfile=None,
-                 default_sender=None, debug=False, connection_retries=10):
+                 default_sender=None, debuglevel=False, connection_retries=10):
 
         self.host = host
         self.port = port
@@ -29,7 +30,7 @@ class Mailer(object):
         self.keyfile = keyfile
         self.certfile = certfile
         self.default_sender = default_sender
-        self.debug = debug
+        self.debuglevel = debuglevel
         self.connection_retries = connection_retries
 
     def _get_connection(self):
@@ -41,10 +42,10 @@ class Mailer(object):
         else:
             connection = smtplib.SMTP(self.host, self.port, self.local_hostname,
                                       self.timeout)
-        connection.set_debuglevel(self.debug)
+        connection.set_debuglevel(self.debuglevel)
         return connection
 
-    def send_mail(self, to_, from_=None, subject=None, body=None,
+    def send_email(self, to_, from_=None, subject=None, body=None,
                   subtype="plain", charset="utf-8"):
 
         message = MIMEText(body, subtype, charset)
@@ -131,3 +132,26 @@ class Mailer(object):
         message.attach(MIMEText(html, "html", charset))
 
         self._send(message, from_addr, to_addr)
+
+
+_mailer = None
+
+def configure(email_config):
+    global _mailer
+    _mailer = Mailer(**email_config)
+
+def send_email(to_, from_=None, subject=None, body=None, subtype="plain",
+               charset="utf-8"):
+
+    if _mailer is None:
+        warnings.warn("Module %s not configured." % __name__)
+    else:
+        return _mailer.send_email(to_, from_, subject, body, subtype, charset)
+
+def send_html_email(to_, from_=None, subject=None, text=None, html=None,
+                    charset="utf-8"):
+
+    if _mailer is None:
+        warnings.warn("Module %s not configured." % __name__)
+    else:
+        return _mailer.send_html_email(to_, from_, subject, text, html, charset)
