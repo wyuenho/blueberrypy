@@ -1,7 +1,7 @@
 import logging
 import unittest
 
-from email.header import Header, decode_header, make_header
+from email.header import decode_header
 
 from lazr.smtptest.controller import QueueController
 
