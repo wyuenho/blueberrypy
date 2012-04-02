@@ -62,13 +62,13 @@ class UserController(object):
 rest_controller = cherrypy.dispatch.RoutesDispatcher()
 rest_controller.mapper.explicit = False
 rest_controller.connect("new_user", "/", UserController, action="create",
-                    conditions={"method":["POST"]})
+                        conditions={"method":["POST"]})
 rest_controller.connect("show_user", "/{id}", UserController, action="show",
-                    conditions={"method":["GET"]})
+                        conditions={"method":["GET"]})
 rest_controller.connect("update_user", "/{id}", UserController, action="update",
-                    conditions={"method":["PUT"]})
+                        conditions={"method":["PUT"]})
 rest_controller.connect("delete_user", "/{id}", UserController, action="delete",
-                    conditions={"method":["DELETE"]})
+                        conditions={"method":["DELETE"]})
 
 # Error handlers
 
