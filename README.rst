@@ -106,6 +106,10 @@ You can install the optional speedup packages too::
 
    $ pip install blueberrypy[speedups]
 
+Finally, you need to install a database driver such as `psycopg2`::
+
+   $ pip install psycopg2
+
 Now your package is ready to be served::
 
    $ blueberrypy serve
