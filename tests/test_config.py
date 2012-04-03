@@ -41,10 +41,9 @@ class BlueberryPyConfigurationTest(unittest.TestCase):
                                 BlueberryPyConfiguration)
 
     def test_config_file_paths(self):
-
+        # stub out os.path.exists
         import os.path
         old_exists = os.path.exists
-
         def proxied_exists(path):
             if path == "/tmp/dev/app.yml":
                 return True
@@ -53,18 +52,15 @@ class BlueberryPyConfigurationTest(unittest.TestCase):
             elif path == "/tmp/dev/logging.yml":
                 return True
             return old_exists(path)
-
         os.path.exists = proxied_exists
-
         old_open = __builtin__.open
 
+        # stub out open
         class FakeFile(StringIO):
-
             def __enter__(self):
                 return self
             def __exit__(self, exc_type=None, exc_value=None, traceback=None):
                 return False
-
         def proxied_open(filename, mode='r', buffering=1):
             if filename == "/tmp/dev/app.yml":
                 return FakeFile()
@@ -77,13 +73,13 @@ class BlueberryPyConfigurationTest(unittest.TestCase):
                 return FakeFile()
             else:
                 return old_open(filename, mode, buffering)
-
         __builtin__.open = proxied_open
 
+        # stub out validate()
         old_validate = BlueberryPyConfiguration.validate
-        try:
-            BlueberryPyConfiguration.validate = lambda self: None
+        BlueberryPyConfiguration.validate = lambda self: None
 
+        try:
             config = BlueberryPyConfiguration(config_dir="/tmp")
             config_file_paths = config.config_file_paths
             self.assertEqual(len(config_file_paths), 3)
