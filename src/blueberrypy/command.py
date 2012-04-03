@@ -27,7 +27,6 @@ from blueberrypy.template_engine import configure_jinja2
 from blueberrypy.exc import BlueberryPyNotConfiguredError
 
 
-# TODO: integrate with weberror
 def create(args, config_dir=None):
 
     if args.path:
@@ -100,6 +99,9 @@ def create(args, config_dir=None):
             else:
                 blueberrypy_config["use_webassets"] = True if not use_webassets or use_webassets[0] == 'y' else False
                 break
+    else:
+        blueberrypy_config["use_jinja2"] = False
+        blueberrypy_config["use_webassets"] = False
 
     while True:
         use_redis = raw_input("Use redis session? [y/N] ").lower()
@@ -117,10 +119,12 @@ def create(args, config_dir=None):
             blueberrypy_config["use_sqlalchemy"] = True if not use_sqlalchemy or use_sqlalchemy[0] == 'y' else False
             blueberrypy_config["sqlalchemy_url"] = sqlalchemy_url = raw_input("SQLAlchemy database connection URL: ")
             if sqlalchemy_url.strip():
-                from sqlalchemy.engine import url as sa_url
-                blueberrypy_config["driver"] = sa_url.make_url(sqlalchemy_url).get_dialect().driver
+                try:
+                    from sqlalchemy.engine import url as sa_url
+                    blueberrypy_config["driver"] = sa_url.make_url(sqlalchemy_url).get_dialect().driver
+                except ImportError, e:
+                    pass
             break
-
 
     create_project(blueberrypy_config, dry_run=args.dry_run)
 
@@ -147,6 +151,9 @@ def create(args, config_dir=None):
     session storage.
 
     e.g. $ pip install blueberrypy[speedups]
+    
+    You should also download the appropriate database driver if you have decided
+    to use BlueberryPy's SQLAlchemy support.
 
     For more information, the BlueberryPy documentation is available at
     http://blueberrypy.readthedocs.org.
@@ -162,7 +169,7 @@ def bundle(args, config_dir=None):
 
     assets_env = config.webassets_env
     if not assets_env:
-        raise BlueberryPyNotConfiguredError("Webassets configuration file '%s' is missing", config.bundles_yml_path)
+        raise BlueberryPyNotConfiguredError("Webassets configuration not found.")
 
     logging.basicConfig()
     logger = logging.getLogger(__name__)
@@ -180,60 +187,47 @@ def bundle(args, config_dir=None):
     elif args.clean:
         assets_cli.clean()
 
-def setup_weberror_environment(blueberrypy_config):
-
-    cherrypy._cpconfig.environments["weberror"] = {
-        "log.wsgi": True,
-        "request.throw_errors": True,
-        "log.screen": False,
-        "engine.autoreload_on": False
-    }
-
-    def remove_error_options(section):
-        section.pop("request.handler_error", None)
-        section.pop("request.error_response", None)
-        section.pop("tools.err_redirect.on", None)
-        section.pop("tools.log_headers.on", None)
-        section.pop("tools.log_tracebacks.on", None)
-
-        for k in section.copy().iterkeys():
-            if k.startswith("error_page.") or \
-                    k.startswith("request.error_page."):
-                section.pop(k)
-
-    for section_name, section in blueberrypy_config.app_config.iteritems():
-        if section_name.startswith("/") or section_name == "global":
-            remove_error_options(section)
-
-    wsgi_pipeline = []
-    if "/" in blueberrypy_config.app_config:
-        wsgi_pipeline = blueberrypy_config.app_config["/"].get("wsgi.pipeline", [])
-    else:
-        blueberrypy_config.app_config["/"] = {}
-
-    from weberror.evalexception import EvalException
-    wsgi_pipeline.insert(0, ("evalexc", EvalException))
-
-    blueberrypy_config.app_config["/"]["wsgi.pipeline"] = wsgi_pipeline
-
-    return blueberrypy_config
-
 def serve(args, config_dir=None):
 
     config = BlueberryPyConfiguration(config_dir=config_dir)
 
     cpengine = cherrypy.engine
 
-    cpenviron = args.environment or config.cherrypy_environment
-
+    cpenviron = args.environment
     if cpenviron:
         config = BlueberryPyConfiguration(config_dir=config_dir,
                                           environment=cpenviron)
-
-        if cpenviron == "weberror":
-            config = setup_weberror_environment(config)
-
         cherrypy.config.update({"environment": cpenviron})
+
+    if config.use_email and config.email_config:
+        from blueberrypy import email
+        email.configure(config.email_config)
+
+    if config.use_logging and config.logging_config:
+        from blueberrypy.plugins import LoggingPlugin
+        cpengine.logging = LoggingPlugin(cpengine, config=config.logging_config)
+
+    if config.use_redis:
+        from blueberrypy.session import RedisSession
+        cherrypy.lib.sessions.RedisSession = RedisSession
+
+    if config.use_sqlalchemy:
+        from blueberrypy.plugins import SQLAlchemyPlugin
+        cpengine.sqlalchemy = SQLAlchemyPlugin(cpengine,
+                                               config=config.sqlalchemy_config)
+        from blueberrypy.tools import SQLAlchemySessionTool
+        cherrypy.tools.orm_session = SQLAlchemySessionTool()
+
+    if config.use_jinja2:
+        if config.webassets_env:
+            configure_jinja2(assets_env=config.webassets_env,
+                                    **config.jinja2_config)
+        else:
+            configure_jinja2(**config.jinja2_config)
+
+    # update global config first, so subsequent command line options can
+    # override the settings in the config files
+    cherrypy.config.update(config.app_config)
 
     if args.binding:
         address, port = args.binding.strip().split(":")
@@ -277,45 +271,22 @@ def serve(args, config_dir=None):
     if hasattr(cpengine, 'signal_handler'):
         cpengine.signal_handler.subscribe()
 
-    # for win32 only, maybe not needed cos we'll never deploy on winblows
+    # for win32 only
     if hasattr(cpengine, "console_control_handler"):
         cpengine.console_control_handler.subscribe()
-
-    from blueberrypy.plugins import LoggingPlugin, SQLAlchemyPlugin
-
-    if config.logging_config:
-        cpengine.logging = LoggingPlugin(cpengine, config=config.logging_config)
-
-    if config.use_redis:
-        from blueberrypy.session import RedisSession
-        cherrypy.lib.sessions.RedisSession = RedisSession
-
-    if config.use_sqlalchemy:
-        cpengine.sqlalchemy = SQLAlchemyPlugin(cpengine,
-                                               config=config.sqlalchemy_config)
-        from blueberrypy.tools import SQLAlchemySessionTool
-        cherrypy.tools.orm_session = SQLAlchemySessionTool()
-
-    cherrypy.config.update(config.app_config)
 
     if config.use_controller:
         controllers_config = config.controllers_config
         controller = controllers_config["controller"]
         script_name = controllers_config.get("script_name", '')
-        cherrypy.tree.mount(controller(), script_name, config.app_config)
-
-    if config.use_jinja2:
-        if config.webassets_env:
-            configure_jinja2(assets_env=config.webassets_env,
-                                    **config.jinja2_config)
-        else:
-            configure_jinja2(**config.jinja2_config)
+        cherrypy.tree.mount(controller(),
+                            script_name=script_name,
+                            config=config.app_config)
 
     if config.use_rest_controller:
         controllers_config = config.controllers_config
         rest_controller = controllers_config["rest_controller"]
-        rest_config = {"/": {"request.dispatch": rest_controller,
-                             "tools.orm_session.on": True}}
+        rest_config = {"/": {"request.dispatch": rest_controller}}
         extra_rest_config = controllers_config.get("rest_config", {})
         for k in extra_rest_config.iterkeys():
             if k in rest_config:
@@ -323,12 +294,16 @@ def serve(args, config_dir=None):
             else:
                 rest_config[k] = dict(extra_rest_config[k])
         rest_script_name = controllers_config.get("rest_script_name", "api")
-        cherrypy.tree.mount(None, script_name=rest_script_name, config=rest_config)
+        cherrypy.tree.mount(None,
+                            script_name=rest_script_name,
+                            config=rest_config)
 
     # Add the blueberrypy config files into CP's autoreload monitor
-    # Jinja2 templates are monitored by Jinja2 itself and will autoreload if needed
-    for path in config.config_file_paths:
-        cpengine.autoreload.files.add(path)
+    # Jinja2 templates are monitored by Jinja2 itself and will autoreload if
+    # needed
+    if config.config_file_paths:
+        for path in config.config_file_paths:
+            cpengine.autoreload.files.add(path)
 
     try:
         cpengine.start()
