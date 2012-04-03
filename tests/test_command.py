@@ -392,8 +392,12 @@ class FakeFile(StringIO):
 
 class ServeCommandTest(unittest.TestCase):
 
+    @classmethod
+    def setUpClass(cls):
+        cls.old_sys_argv = sys.argv
+        cls.old_cherrypy_server_bind_addr = cherrypy.server.bind_addr
+
     def setUp(self):
-        # stub out os.path.exists
         self.old_exists = os.path.exists
         self.old_open = __builtin__.open
 
@@ -419,6 +423,8 @@ class ServeCommandTest(unittest.TestCase):
             blueberrypy.template_engine.jinja2_env = None
 
         # restore stuff
+        sys.argv = self.old_sys_argv
+        cherrypy.server.bind_addr = self.old_cherrypy_server_bind_addr
         os.path.exists = self.old_exists
         __builtin__.open = self.old_open
         cherrypy.engine.block = self.old_cherrypy_engine_block
@@ -674,6 +680,17 @@ class ServeCommandTest(unittest.TestCase):
     def test_bind(self):
         self._setup_basic_app_config()
 
+        # hack to get around problem with not being able to acquire a port
+        # after listening on a different ip/port in a previous test 
+        old_cherrypy_engine_start = cherrypy.engine.start
+        def dummy_start(self):
+            pass
+        cherrypy.engine.start = dummy_start.__get__(cherrypy.engine, cherrypy.engine.__class__)
+
         sys.argv = "blueberrypy -C /tmp serve -b 0.0.0.0:9090".split()
-        main()
-        self.assertEqual(cherrypy.server.bind_addr, ("0.0.0.0", 9090))
+
+        try:
+            main()
+            self.assertEqual(cherrypy.server.bind_addr, ("0.0.0.0", 9090))
+        finally:
+            cherrypy.engine.start = old_cherrypy_engine_start
