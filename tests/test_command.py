@@ -451,6 +451,8 @@ class ServeCommandTest(unittest.TestCase):
 
     def _setup_basic_app_config(self):
         app_yml_file = FakeFile(textwrap.dedent("""
+        global:
+            environment: test_suite
         controllers:
             controller: !!python/name:tests.test_command.Root
             rest_controller: !!python/name:tests.test_command.rest_controller
@@ -461,6 +463,8 @@ class ServeCommandTest(unittest.TestCase):
 
     def test_setup_cherrypy_email(self):
         app_yml_file = FakeFile(textwrap.dedent("""
+        global:
+            environment: test_suite
         controllers:
             controller: !!python/name:tests.test_command.Root
             rest_controller: !!python/name:tests.test_command.rest_controller
@@ -485,6 +489,7 @@ class ServeCommandTest(unittest.TestCase):
         app_yml_file = FakeFile(textwrap.dedent("""
         global:
             engine.logging.on: true
+            environment: test_suite
         controllers:
             controller: !!python/name:tests.test_command.Root
             rest_controller: !!python/name:tests.test_command.rest_controller
@@ -521,6 +526,8 @@ class ServeCommandTest(unittest.TestCase):
 
     def test_setup_cherrypy_redis(self):
         app_yml_file = FakeFile(textwrap.dedent("""
+        global:
+            environment: test_suite
         /:
             tools.sessions.storage_type: redis
         controllers:
@@ -544,6 +551,7 @@ class ServeCommandTest(unittest.TestCase):
         app_yml_file = FakeFile(textwrap.dedent("""
         global:
             engine.sqlalchemy.on: true
+            environment: test_suite
         controllers:
             controller: !!python/name:tests.test_command.Root
             rest_controller: !!python/name:tests.test_command.rest_controller
@@ -565,6 +573,8 @@ class ServeCommandTest(unittest.TestCase):
 
     def test_setup_cherrypy_jinja2(self):
         app_yml_file = FakeFile(textwrap.dedent("""
+        global:
+            environment: test_suite
         controllers:
             controller: !!python/name:tests.test_command.Root
             rest_controller: !!python/name:tests.test_command.rest_controller
@@ -587,6 +597,8 @@ class ServeCommandTest(unittest.TestCase):
 
     def test_setup_cherrypy_webassets(self):
         app_yml_file = FakeFile(textwrap.dedent("""
+        global:
+            environment: test_suite
         controllers:
             controller: !!python/name:tests.test_command.Root
             rest_controller: !!python/name:tests.test_command.rest_controller
@@ -622,6 +634,7 @@ class ServeCommandTest(unittest.TestCase):
         global:
             engine.logging.on: true
             engine.sqlalchemy.on: true
+            environment: test_suite
         /:
             tools.sessions.storage_type: redis
         controllers:
