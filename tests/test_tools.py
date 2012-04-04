@@ -19,7 +19,7 @@ from testconfig import config as testconfig
 
 from blueberrypy.plugins import SQLAlchemyPlugin
 from blueberrypy.tools import SQLAlchemySessionTool
-cherrypy.tools.orm_session = SQLAlchemySessionTool()
+
 
 def get_config(section_name):
     return dict([(str(k), v) for k, v in testconfig[section_name].iteritems()])
@@ -119,6 +119,7 @@ class SQLAlchemySessionToolSingleEngineTest(helper.CPWebCase, unittest.TestCase)
 
         saconf = {'sqlalchemy_engine': get_config('sqlalchemy_engine')}
         cherrypy.engine.sqlalchemy = SQLAlchemyPlugin(cherrypy.engine, saconf)
+        cherrypy.tools.orm_session = SQLAlchemySessionTool()
         cherrypy.config.update({'engine.sqlalchemy.on': True})
         cherrypy.tree.mount(SingleEngine())
 
@@ -254,6 +255,7 @@ class SQLAlchemySessionToolTwoPhaseTest(helper.CPWebCase, unittest.TestCase):
         saconf = {'sqlalchemy_engine_tests.test_tools.User': get_config('sqlalchemy_engine'),
                   'sqlalchemy_engine_tests.test_tools.Address': get_config('sqlalchemy_engine')}
         cherrypy.engine.sqlalchemy = SQLAlchemyPlugin(cherrypy.engine, saconf)
+        cherrypy.tools.orm_session = SQLAlchemySessionTool()
         cherrypy.config.update({'engine.sqlalchemy.on': True})
         cherrypy.tree.mount(TwoPhase())
 
