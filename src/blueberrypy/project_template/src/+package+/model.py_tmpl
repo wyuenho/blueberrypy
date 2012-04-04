@@ -4,8 +4,8 @@ from base64 import b64decode, b64encode
 from datetime import datetime, timedelta
 from hashlib import sha256
 
-from sqlalchemy import Column, Integer, Unicode, UnicodeText, Date, DateTime, \
-    String, BigInteger, Enum, SmallInteger, func, text
+from sqlalchemy import Column, Integer, UnicodeText, Date, DateTime, String, \
+    BigInteger, Enum, SmallInteger, func, text
 from sqlalchemy.orm import deferred
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -17,6 +17,8 @@ metadata = Base.metadata
 __all__ = ["User", "Venue"]
 
 
+# NOTE: This class is PostgreSQL specific. You should customize age() and the
+# character column sizes if you want to use other databases.
 class User(Base):
     """
     This example class represents a Facebook user. You can customize this class
@@ -31,9 +33,9 @@ class User(Base):
 
     id = Column(Integer, autoincrement=True, primary_key=True)
     fbid = Column(BigInteger, unique=True, index=True)
-    username = Column(Unicode(80), unique=True, index=True)
-    displayname = Column(Unicode(80), nullable=False)
-    email = Column(Unicode(80), unique=True, nullable=False, index=True)
+    username = Column(UnicodeText, unique=True, index=True)
+    displayname = Column(UnicodeText, nullable=False)
+    email = Column(UnicodeText, unique=True, nullable=False, index=True)
 
     _salt = Column("salt", String(12))
 
@@ -47,8 +49,8 @@ class User(Base):
 
         return self._salt
 
-    # 40 is the length of the SHA-256 encoded string length
-    _password = Column("password", Unicode(64))
+    # 64 is the length of the SHA-256 encoded string length
+    _password = Column("password", String(64))
 
     def __encrypt_password(self, password, salt):
         """
