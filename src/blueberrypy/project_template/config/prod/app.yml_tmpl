@@ -71,7 +71,7 @@ sqlalchemy_engine:
 jinja2:
   loader: !!python/object:jinja2.loaders.FileSystemLoader
           encoding: utf-8
-          searchpath: [{{path}}/src/{{package}}/template]
+          searchpath: [{{path}}/src/{{package}}/templates]
   bytecode_cache: !!python/object:jinja2.bccache.FileSystemBytecodeCache {directory: {{path}}/.cache,
                                                                           pattern: __jinja2_%s.cache}
   auto_reload: false

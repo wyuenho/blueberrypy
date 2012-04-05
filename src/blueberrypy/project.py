@@ -21,7 +21,7 @@ def project_template_filter(blueberrypy_config, path):
     if path.endswith("rest_api.py") or path.endswith("rest_controller.py"):
         return blueberrypy_config.get("use_rest_controller")
     if path.endswith("controller.py") or path.endswith("api.py") or \
-        path.find("/template") != -1:
+        path.find("/templates") != -1:
         return blueberrypy_config.get("use_controller")
     if path.endswith("bundles.yml"):
         return blueberrypy_config.get("use_webassets")
