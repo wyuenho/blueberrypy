@@ -25,7 +25,7 @@ class CreateCommandTest(unittest.TestCase):
         with Mock() as raw_input:
             from __builtin__ import raw_input
             raw_input("Project name: ") >> "testproject"
-            raw_input("Package name: [a-z_]+ ") >> "testproject"
+            raw_input("Package name: ") >> "testproject"
             raw_input("Version (PEP 386): ") >> "0.1"
             raw_input("Author name: ") >> "author"
             raw_input("Email: ") >> "alice@example.com"
@@ -68,7 +68,7 @@ class CreateCommandTest(unittest.TestCase):
         with Mock() as raw_input:
             from __builtin__ import raw_input
             raw_input("Project name: ") >> "testproject"
-            raw_input("Package name: [a-z_]+ ") >> "testproject"
+            raw_input("Package name: ") >> "testproject"
             raw_input("Version (PEP 386): ") >> "0.1"
             raw_input("Author name: ") >> "author"
             raw_input("Email: ") >> "alice@example.com"
@@ -111,7 +111,7 @@ class CreateCommandTest(unittest.TestCase):
         with Mock() as raw_input:
             from __builtin__ import raw_input
             raw_input("Project name: ") >> "testproject"
-            raw_input("Package name: [a-z_]+ ") >> "testproject"
+            raw_input("Package name: ") >> "testproject"
             raw_input("Version (PEP 386): ") >> "0.1"
             raw_input("Author name: ") >> "author"
             raw_input("Email: ") >> "alice@example.com"
@@ -152,7 +152,7 @@ class CreateCommandTest(unittest.TestCase):
         with Mock() as raw_input:
             from __builtin__ import raw_input
             raw_input("Project name: ") >> "testproject"
-            raw_input("Package name: [a-z_]+ ") >> "testproject"
+            raw_input("Package name: ") >> "testproject"
             raw_input("Version (PEP 386): ") >> "0.1"
             raw_input("Author name: ") >> "author"
             raw_input("Email: ") >> "alice@example.com"
@@ -193,7 +193,7 @@ class CreateCommandTest(unittest.TestCase):
         with Mock() as raw_input:
             from __builtin__ import raw_input
             raw_input("Project name: ") >> "testproject"
-            raw_input("Package name: [a-z_]+ ") >> "testproject"
+            raw_input("Package name: ") >> "testproject"
             raw_input("Version (PEP 386): ") >> "0.1"
             raw_input("Author name: ") >> "author"
             raw_input("Email: ") >> "alice@example.com"
@@ -236,7 +236,7 @@ class CreateCommandTest(unittest.TestCase):
         with Mock() as raw_input:
             from __builtin__ import raw_input
             raw_input("Project name: ") >> "testproject"
-            raw_input("Package name: [a-z_]+ ") >> "testproject"
+            raw_input("Package name: ") >> "testproject"
             raw_input("Version (PEP 386): ") >> "0.1"
             raw_input("Author name: ") >> "author"
             raw_input("Email: ") >> "alice@example.com"
@@ -279,8 +279,8 @@ class CreateCommandTest(unittest.TestCase):
         with Mock() as raw_input:
             from __builtin__ import raw_input
             raw_input("Project name: ") >> ""
-            raw_input("Package name: [a-z_]+ ") >> "IWontPass"
-            raw_input("Package name: [a-z_]+ ") >> "valid_package_name"
+            raw_input("Package name: ") >> ""
+            raw_input("Package name: ") >> "valid_package_name"
             raw_input("Version (PEP 386): ") >> "IWillFail"
             raw_input("Version (PEP 386): ") >> "0.1"
             raw_input("Author name: ") >> ""
@@ -324,7 +324,7 @@ class CreateCommandTest(unittest.TestCase):
         with Mock() as raw_input:
             from __builtin__ import raw_input
             raw_input("Project name: ") >> ""
-            raw_input("Package name: [a-z_]+ ") >> "valid_package_name"
+            raw_input("Package name: ") >> "valid_package_name"
             raw_input("Version (PEP 386): ") >> "0.1"
             raw_input("Author name: ") >> ""
             raw_input("Email: ") >> "alice@example.com"

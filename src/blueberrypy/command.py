@@ -34,7 +34,6 @@ def create(args, config_dir=None):
             print("Path '%s' not found" % args.path, file=sys.stderr)
             sys.exit(1)
 
-    valid_package_name_re = re.compile(r"^[a-z_]+$")
     valid_version_re = re.compile(r"^\d+.\d+(.\d+)*(a|b|c|rc\d+(.\d+)?)?(.post\d+)?(.dev\d+)?$")
     valid_email_re = re.compile(r"^.+@.+$")
 
@@ -45,9 +44,9 @@ def create(args, config_dir=None):
     blueberrypy_config["project_name"] = raw_input("Project name: ")
 
     while True:
-        blueberrypy_config["package"] = package = raw_input("Package name: [a-z_]+ ")
-        if not valid_package_name_re.match(package):
-            print("'%s' is an invalid package name." % package, file=sys.stderr)
+        blueberrypy_config["package"] = package = raw_input("Package name: ")
+        if not package:
+            print("Package name cannot be empty.", file=sys.stderr)
         else:
             break
 
