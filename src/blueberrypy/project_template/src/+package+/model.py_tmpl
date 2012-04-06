@@ -14,7 +14,7 @@ Base = declarative_base()
 metadata = Base.metadata
 
 
-__all__ = ["User", "Venue"]
+__all__ = ["User"]
 
 
 # NOTE: This class is PostgreSQL specific. You should customize age() and the
