@@ -151,7 +151,7 @@ def create(args, config_dir=None):
 
     e.g. $ pip install blueberrypy[speedups]
     
-    You should also download the appropriate database driver if you have decided
+    You should also install the appropriate database driver if you have decided
     to use BlueberryPy's SQLAlchemy support.
 
     For more information, the BlueberryPy documentation is available at
@@ -292,7 +292,7 @@ def serve(args, config_dir=None):
                 rest_config[k].update(extra_rest_config[k])
             else:
                 rest_config[k] = dict(extra_rest_config[k])
-        rest_script_name = controllers_config.get("rest_script_name", "api")
+        rest_script_name = controllers_config.get("rest_script_name", "/api")
         cherrypy.tree.mount(None,
                             script_name=rest_script_name,
                             config=rest_config)
