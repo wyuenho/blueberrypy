@@ -1,3 +1,4 @@
+import copy
 import hashlib
 import hmac
 
@@ -13,78 +14,200 @@ from datetime import date, time, datetime, timedelta
 from dateutil.parser import parse as parse_date
 
 try:
-    from geoalchemy.base import SpatialElement
+    from geoalchemy.base import SpatialElement, WKTSpatialElement
     from shapely.geometry import asShape, mapping as asGeoJSON
+    from shapely.wkb import loads as wkb_decode
+    from shapely.wkt import loads as wkt_decode
 except ImportError:
     geos_support = False
-
-    class SpatialElement:
-        pass
-
-    def asShape(d):
-        pass
-
-    def asGeoJSON(d):
-        pass
 else:
     geos_support = True
 
-# TODO: add validators
-def to_json(instance, includes=None, excludes=None, serialize=False):
 
-    includes = set([includes] if isinstance(includes, basestring) else includes and list(includes) or [])
-    excludes = set([excludes] if isinstance(excludes, basestring) else excludes and list(excludes) or [])
-    attrs = set(instance.__table__.c.keys())
-    attrs = includes | attrs - excludes
+__all__ = ["to_mapping", "from_mapping", "CSRFToken",
+           "pad_block_cipher_message", "unpad_block_cipher_message"]
 
-    doc = {}
-    for k in attrs:
-        v = getattr(instance, k)
-        if not k.startswith("_") and not isinstance(v, (tuple, list, set, frozenset, dict)):
-            if isinstance(v, datetime):
-                v = {"datetime": v.isoformat()}
-            elif isinstance(v, time):
-                v = {"time": v.isoformat()}
-            elif isinstance(v, date):
-                v = {"date": v.isoformat()}
-            elif isinstance(v, timedelta):
-                v = {"interval": v.seconds}
-            elif geos_support and isinstance(v, SpatialElement):
-                v = asGeoJSON(v)
-            doc[k] = v
 
-    if serialize:
-        return json.dumps(doc)
-    return doc
+def to_mapping(value, includes=None, excludes=None, format=None, **json_kwargs):
+    """Utility function to convert a value to a mapping.
+    
+    This function has 2 modes:
+        - SQLAlchemy declarative model -> mapping
+        - complex value type (e.g. datetime types and GeoAlchemy SpatialElement) -> mapping
+    
+    SQLAlchemy declarative model
+    ----------------------------
+    If `value` is a SQLAlchemy declarative model value (identified by the
+    existance of an `__table__` attribute), `to_mapping()` will iterate through
+    all the value's column and put the column's name and its value into the
+    mapping object to be returned. In addition to basic Python data types, this
+    function will convert `datetime` values according to the following table:
 
-def from_json(doc, instance, excludes=None):
+    ========== =========== =============
+    value type mapping key mapping value
+    ========== =========== =============
+    datetime   datetime    .isoformat()
+    time       time        .isoformat()
+    date       date        .isoformat()
+    timedelta  interval    .seconds
+    ========== =========== =============
+    
+    In additional to `datetime` values, GeoAlchemy `SpatialElement values are
+    also converted to `geojson <http://geojson.org/>`_ format using
+    `Shapely <http://toblerity.github.com/shapely/>_`.
+    
+    Under SQLalchemy mode, if `includes` is provided, additional attribute(s) in
+    the model value will be included in the returned mapping. `includes` can be
+    a string or a list of strings. If `excludes` is provided, which can also be
+    a string or a list of strings, the attribute(s) will be exclude from the
+    returned mapping.
+    
+    **Note:** columns with names starting with '_' and attributes that are
+    containers (e.g. relationship attributes) will never be included in the
+    returned mapping.
+    
+    Complex values
+    --------------
+    If `value` is not a a SQLAlchemy declarative model, a shallow copy of it
+    will be made and processed according to the same logic as SQLAlchemy mode's
+    column values. Namely `datatime` values and GeoAlchemy SpatialElement values
+    will be converted to their mapping representations.
+    
+    If `format` is the string `json`, the mapping returned will be a JSON string
+    , otherwise a mapping object will be returned.
+    
+    If any `json_kwargs` is provided, they will be passed through to the
+    underlying simplejson JSONDecoder.
+    
+    Examples:
+    ---------
+    >>> to_mapping(legco) #doctest: +SKIP
+    {'name': 'Hong Kong Legislative Council Building', 'founded': {'date': '1912-01-15'}, 'location': {'type': 'Point', 'coordinates': (22.280909, 114.160349)}}
+    
+    >>> to_mapping(legco, excludes=['founded', 'location']) #doctest: +SKIP
+    {'name': 'Hong Kong Legislative Council Building'}
+    
+    >>> to_mapping(legco, excludes=['founded'], format='json') #doctest: +SKIP
+    '{"name": "Hong Kong Legislative Council Building", 'location': {'type': 'Point', 'coordinates': [22.280909, 114.160349]}}'
+    """
 
-    if isinstance(doc, basestring):
-        doc = json.loads(doc)
+    if hasattr(value, "__table__"):
+        includes = set([includes] if isinstance(includes, basestring) else includes and list(includes) or [])
+        excludes = set([excludes] if isinstance(excludes, basestring) else excludes and list(excludes) or [])
+        attrs = set(value.__table__.c.keys())
+        attrs = includes | attrs - excludes
 
-    if not isinstance(doc, dict):
-        raise TypeError(doc, "doc must be a dict")
+        mapping = {}
+        for k in attrs:
+            v = getattr(value, k)
+            if not k.startswith("_") and not isinstance(v, (tuple, list, set, frozenset, dict)):
+                if isinstance(v, datetime):
+                    v = {"datetime": v.isoformat()}
+                elif isinstance(v, time):
+                    v = {"time": v.isoformat()}
+                elif isinstance(v, date):
+                    v = {"date": v.isoformat()}
+                elif isinstance(v, timedelta):
+                    v = {"interval": v.seconds}
+                elif geos_support and isinstance(v, SpatialElement):
+                    if isinstance(v, WKTSpatialElement):
+                        v = asGeoJSON(wkt_decode(v.geom_wkt))
+                    else:
+                        v = asGeoJSON(wkb_decode(str(v.geom_wkb)))
+                mapping[k] = v
+
+        if format == "json":
+            return json.dumps(mapping, **json_kwargs)
+        return mapping
+    else:
+        v = copy.copy(value)
+        if isinstance(v, datetime):
+            v = {"datetime": v.isoformat()}
+        elif isinstance(v, time):
+            v = {"time": v.isoformat()}
+        elif isinstance(v, date):
+            v = {"date": v.isoformat()}
+        elif isinstance(v, timedelta):
+            v = {"interval": v.seconds}
+        elif geos_support and isinstance(v, SpatialElement):
+            if isinstance(v, WKTSpatialElement):
+                v = asGeoJSON(wkt_decode(v.geom_wkt))
+            else:
+                v = asGeoJSON(wkb_decode(str(v.geom_wkb)))
+
+        if format == "json":
+            return json.dumps(v, **json_kwargs)
+        return v
+
+# TODO: add validators support
+def from_mapping(mapping, instance, excludes=None, format=None):
+    """Utility function to set the column values of a SQLAlchemy declarative
+    model instance via a mapping.
+    
+    This function takes a `mapping` and an `instance` and sets the attributes
+    on the SQLAlchemy declarative model instance using the key-value pairs from
+    the mapping **inplace**.
+    
+    If `excludes` is provided, which can be a string or a list of strings, the
+    attribute(s) in the mapping will *NOT* be set on the instance.
+    
+    If `format` is the string `json`, the mapping returned will be a JSON string
+    , otherwise a mapping object will be returned.
+    
+    If a key from the mapping is not found as a column on the instance, it will
+    simply be skipped and not set on the instance.
+    
+    The values supplied is converted according to the similiar rules as
+    `to_mapping()`:
+    
+    ============== ============================================
+    column type    mapping value format
+    ============== ============================================
+    datetime       {"datetime": "ISO-8601"}
+    time           {"time": "ISO-8601"}
+    date           {"date": "ISO-8601"}
+    timedelta      {"interval": seconds}
+    SpatialElement {"type": "Point", "coordinates": [lat, lng]}
+    ============== ============================================
+    
+    **Security Notice:** This function currently does not yet have integration 
+    support for data validation. If you are using this function to directly 
+    mass-assign user supplied data to your model instances, make sure you have 
+    validated the data first. In a future version of blueberrypy, integration 
+    with a form validation library will be provided to ease this process. 
+    """
+
+    if format == "json":
+        mapping = json.loads(mapping)
+
+    if not isinstance(mapping, dict):
+        raise TypeError(mapping, "mapping must be a dict")
 
     excludes = set([excludes] if isinstance(excludes, basestring) else excludes and list(excludes) or [])
     attrs = set(instance.__table__.c.keys())
     attrs = attrs - excludes
 
-    for k, v in doc.iteritems():
+    for k, v in mapping.iteritems():
 
         if k in attrs:
             if isinstance(v, dict):
                 if "date" in v:
                     v = parse_date(v["date"]).date()
+                    setattr(instance, k, v)
                 elif "time" in v:
                     v = parse_date(v["time"]).time()
+                    setattr(instance, k, v)
                 elif "datetime" in v:
                     v = parse_date(v["datetime"])
+                    setattr(instance, k, v)
                 elif "interval" in v:
                     v = timedelta(seconds=v["interval"])
+                    setattr(instance, k, v)
                 elif geos_support and "type" in v:
                     v = asShape(v)
-
-            setattr(instance, k, v)
+                    setattr(instance, k, WKTSpatialElement(v.wkt))
+            else:
+                setattr(instance, k, v)
 
     return instance
 
