@@ -47,7 +47,7 @@ controllers:
   {%- endif %}
   {% if use_rest_controller -%}
   rest_controller: !!python/name:{{package}}.rest_controller.rest_controller
-  rest_script_name: api
+  rest_script_name: /api
   rest_config:
     /:
       tools.proxy.on: true
