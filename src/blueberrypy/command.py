@@ -292,6 +292,9 @@ def serve(args, config_dir=None):
                 rest_config[k].update(extra_rest_config[k])
             else:
                 rest_config[k] = dict(extra_rest_config[k])
+        for k, v in config.app_config.iteritems():
+            if not k.startswith("/"):
+                rest_config[k] = v
         rest_script_name = controllers_config.get("rest_script_name", "/api")
         cherrypy.tree.mount(None,
                             script_name=rest_script_name,
