@@ -1,9 +1,9 @@
-import os
 import os.path
 import re
 import shutil
 
 from jinja2 import Environment as Jinja2Environment
+
 
 def project_template_filter(blueberrypy_config, path):
 
@@ -18,16 +18,18 @@ def project_template_filter(blueberrypy_config, path):
     if path.endswith("_tmpl"):
         path = path[:-5]
 
-    if path.endswith("rest_api.py") or path.endswith("rest_controller.py"):
+    if path.endswith("rest_controller.py"):
         return blueberrypy_config.get("use_rest_controller")
-    if path.endswith("controller.py") or path.endswith("api.py") or \
-        path.find("/templates") != -1:
+    if path.endswith("controller.py") or path.find("static") != -1:
         return blueberrypy_config.get("use_controller")
+    if path.find("/templates") != -1:
+        return blueberrypy_config.get("use_controller") and \
+            blueberrypy_config.get("use_jinja2")
     if path.endswith("bundles.yml"):
         return blueberrypy_config.get("use_webassets")
     if path.endswith(".hidden"):
         return False
-    if path.endswith("model.py"):
+    if path.endswith("model.py") or path.endswith("api.py"):
         return blueberrypy_config.get("use_sqlalchemy")
 
     return True
