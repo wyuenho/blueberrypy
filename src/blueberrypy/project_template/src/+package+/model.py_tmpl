@@ -128,3 +128,4 @@ class User(Base):
     created = Column(DateTime, default=datetime.utcnow, server_default=text("now()"), nullable=False)
     lastmodified = Column(DateTime, default=datetime.utcnow, server_default=text("now()"), nullable=False)
     lastaccessed = Column(DateTime, default=datetime.utcnow, server_default=text("now()"), nullable=False)
+

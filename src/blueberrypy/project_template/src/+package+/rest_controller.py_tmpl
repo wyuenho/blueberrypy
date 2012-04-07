@@ -10,10 +10,12 @@ import cherrypy
 
 from cherrypy import HTTPError
 from cherrypy.lib import httputil as cphttputil
-from blueberrypy.util import from_json, to_json
+from blueberrypy.util import from_mapping, to_mapping
 
-from {{package}} import rest_api
+{%- if use_sqlalchemy %}
+from {{package}} import api
 from {{package}}.model import User
+{%- endif %}
 
 
 class UserController(object):
@@ -22,34 +24,50 @@ class UserController(object):
 
     @cherrypy.tools.json_out()
     def create(self, **kwargs):
+        {%- if use_sqlalchemy %}
         req = cherrypy.request
         orm_session = req.orm_session
-        user = from_json(req.json, User())
+        user = from_mapping(req.json, User())
         orm_session.add(user)
         orm_session.commit()
-        return to_json(user, includes="age", excludes=("password", "salt"))
+        return to_mapping(user, includes="age", excludes=("password", "salt"),
+                          sort_keys=True)
+        {%- else %}
+        return {}
+        {%- endif %}
 
     @cherrypy.tools.json_out()
     def show(self, id, **kwargs):
+        {%- if use_sqlalchemy %}
         id = int(id)
         user = rest_api.find_user_by_id(cherrypy.request.orm_session, id)
         if user:
-            return to_json(user, includes="age", excludes=("password", "salt"))
+            return to_mapping(user, includes="age", excludes=("password", "salt").
+                              sort_keys=True)
         raise HTTPError(404)
+        {%- else %}
+        return {}
+        {%- endif %}
 
     @cherrypy.tools.json_out()
     def update(self, id, **kwargs):
+        {%- if use_sqlalchemy %}
         id = int(id)
         req = cherrypy.request
         orm_session = req.orm_session
         user = rest_api.find_user_by_id(orm_session, id)
         if user:
-            user = from_json(req.json, user)
+            user = from_mapping(req.json, user)
             orm_session.commit()
-            return to_json(user, includes="age", excludes=("password", "salt"))
+            return to_mapping(user, includes="age", excludes=("password", "salt"),
+                              sort_keys=True)
         raise HTTPError(404)
+        {%- else %}
+        return {}
+        {%- endif %}
 
     def delete(self, id, **kwargs):
+        {%- if use_sqlalchemy %}
         id = int(id)
         req = cherrypy.request
         orm_session = req.orm_session
@@ -57,6 +75,9 @@ class UserController(object):
             raise HTTPError(404)
         else:
             orm_session.commit()
+        {%- else %}
+        return {}
+        {%- endif %}
 
 
 rest_controller = cherrypy.dispatch.RoutesDispatcher()
@@ -73,7 +94,7 @@ rest_controller.connect("delete_user", "/{id}", UserController, action="delete",
 # Error handlers
 
 def generic_error_handler(status, message, traceback, version):
-    """Used for error_page.default"""
+    """error_page.default"""
 
     code, reason, _ = cphttputil.valid_status(status)
     result = {"code": code, "reason": reason, "message": message}
@@ -112,3 +133,4 @@ def unexpected_error_hander():
             tb = traceback.format_exc()
             content["traceback"] = tb
         response.body = json.dumps(content)
+

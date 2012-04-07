@@ -1,5 +1,0 @@
-{% if use_alchemy -%}
-sqlalchemy_engine:
-  url: {{sqlalchemy_url}}
-  pool_recycle: 5
-{% endif %}
