@@ -31,8 +31,8 @@ def create(args, config_dir=None):
 
     if args.path:
         if not os.path.exists(args.path):
-            print("Path '%s' not found" % args.path, file=sys.stderr)
-            sys.exit(1)
+            os.mkdir(args.path)
+            print("Path not found, a directory '%s' has been created." % args.path, file=sys.stderr)
 
     valid_version_re = re.compile(r"^\d+.\d+(.\d+)*(a|b|c|rc\d+(.\d+)?)?(.post\d+)?(.dev\d+)?$")
     valid_email_re = re.compile(r"^.+@.+$")
@@ -116,13 +116,15 @@ def create(args, config_dir=None):
             print("Please answer Y or N.", file=sys.stderr)
         else:
             blueberrypy_config["use_sqlalchemy"] = True if not use_sqlalchemy or use_sqlalchemy[0] == 'y' else False
-            blueberrypy_config["sqlalchemy_url"] = sqlalchemy_url = raw_input("SQLAlchemy database connection URL: ")
-            if sqlalchemy_url.strip():
-                try:
-                    from sqlalchemy.engine import url as sa_url
-                    blueberrypy_config["driver"] = sa_url.make_url(sqlalchemy_url).get_dialect().driver
-                except ImportError, e:
-                    pass
+            if blueberrypy_config["use_sqlalchemy"]:
+                blueberrypy_config["sqlalchemy_url"] = sqlalchemy_url = raw_input("SQLAlchemy database connection URL: ")
+                if sqlalchemy_url.strip():
+                    try:
+                        from sqlalchemy.engine import url as sa_url
+                        blueberrypy_config["driver"] = sa_url.make_url(sqlalchemy_url).get_dialect().driver
+                    except ImportError, e:
+                        pass
+                break
             break
 
     create_project(blueberrypy_config, dry_run=args.dry_run)

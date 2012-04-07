@@ -14,7 +14,6 @@ from ludibrio import Mock
 
 import blueberrypy
 from blueberrypy.command import main
-from blueberrypy.config import BlueberryPyConfiguration
 
 
 class CreateCommandTest(unittest.TestCase):
@@ -119,16 +118,13 @@ class CreateCommandTest(unittest.TestCase):
             raw_input("Use RESTful controllers? [y/N] ") >> "n"
             raw_input("Use redis session? [y/N] ") >> "n"
             raw_input("Use SQLAlchemy ORM? [Y/n] ") >> "n"
-            raw_input("SQLAlchemy database connection URL: ") >> "sqlite://"
 
         config = {'author': 'author',
                   'current_year': 2012,
-                  'driver': 'pysqlite',
                   'email': 'alice@example.com',
                   'package': 'testproject',
                   'path': os.getcwdu(),
                   'project_name': 'testproject',
-                  'sqlalchemy_url': 'sqlite://',
                   'use_controller': False,
                   'use_jinja2': False,
                   'use_redis': False,
@@ -160,16 +156,13 @@ class CreateCommandTest(unittest.TestCase):
             raw_input("Use RESTful controllers? [y/N] ") >> "No"
             raw_input("Use redis session? [y/N] ") >> "No"
             raw_input("Use SQLAlchemy ORM? [Y/n] ") >> "No"
-            raw_input("SQLAlchemy database connection URL: ") >> "sqlite://"
 
         config = {'author': 'author',
                   'current_year': 2012,
-                  'driver': 'pysqlite',
                   'email': 'alice@example.com',
                   'package': 'testproject',
                   'path': os.getcwdu(),
                   'project_name': 'testproject',
-                  'sqlalchemy_url': 'sqlite://',
                   'use_controller': False,
                   'use_jinja2': False,
                   'use_redis': False,
@@ -203,16 +196,13 @@ class CreateCommandTest(unittest.TestCase):
             raw_input("Use webassets asset management framework? [Y/n] ") >> "No"
             raw_input("Use redis session? [y/N] ") >> "No"
             raw_input("Use SQLAlchemy ORM? [Y/n] ") >> "No"
-            raw_input("SQLAlchemy database connection URL: ") >> "sqlite://"
 
         config = {'author': 'author',
                   'current_year': 2012,
-                  'driver': 'pysqlite',
                   'email': 'alice@example.com',
                   'package': 'testproject',
                   'path': os.getcwdu(),
                   'project_name': 'testproject',
-                  'sqlalchemy_url': 'sqlite://',
                   'use_controller': True,
                   'use_jinja2': False,
                   'use_redis': False,
@@ -246,16 +236,13 @@ class CreateCommandTest(unittest.TestCase):
             raw_input("Use webassets asset management framework? [Y/n] ") >> "n"
             raw_input("Use redis session? [y/N] ") >> "No"
             raw_input("Use SQLAlchemy ORM? [Y/n] ") >> "No"
-            raw_input("SQLAlchemy database connection URL: ") >> "sqlite://"
 
         config = {'author': 'author',
                   'current_year': 2012,
-                  'driver': 'pysqlite',
                   'email': 'alice@example.com',
                   'package': 'testproject',
                   'path': os.getcwdu(),
                   'project_name': 'testproject',
-                  'sqlalchemy_url': 'sqlite://',
                   'use_controller': True,
                   'use_jinja2': False,
                   'use_redis': False,
