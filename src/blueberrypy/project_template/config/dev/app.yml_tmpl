@@ -1,18 +1,18 @@
 global:
   engine.logging.on: true
-  {% if use_sqlalchemy -%}
+  {%- if use_sqlalchemy %}
   engine.sqlalchemy.on: true
   {%- endif %}
 /:
   tools.proxy.on: true
-  {% if use_sqlalchemy -%}
+  {%- if use_sqlalchemy %}
   tools.orm_session.on: true
   {%- endif %}
   tools.sessions.on: true
-  {% if use_redis -%}
+  {%- if use_redis %}
   tools.sessions.storage_type: redis
   {%- endif %}
-  {% if use_controller -%}
+  {%- if use_controller %}
   tools.staticdir.root: {{path}}/static
   tools.staticfile.root: {{path}}/static
 /css:
@@ -38,24 +38,25 @@ project_metadata:
   package: {{package}}
  
 controllers:
-  {% if use_controller -%}
+  {%- if use_controller %}
   controller: !!python/name:{{package}}.controller.Root
   script_name: ''
   {%- endif %}
-  {% if use_rest_controller -%}
+  {%- if use_rest_controller %}
   rest_controller: !!python/name:{{package}}.rest_controller.rest_controller
   rest_script_name: /api
   rest_config:
     /:
       tools.proxy.on: true
-      {% if use_sqlalchemy -%}
+      {%- if use_sqlalchemy %}
       tools.orm_session.on: true
       {%- endif %}
   {%- endif %}
-  {% if not use_rest_controller and not use_controller -%}
+  {%- if not use_rest_controller and not use_controller %}
   controller:
   script_name: ''
   {%- endif %}
+
 {% if use_sqlalchemy -%}
 sqlalchemy_engine:
   url: {{sqlalchemy_url}}

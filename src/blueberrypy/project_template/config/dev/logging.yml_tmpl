@@ -8,7 +8,7 @@ loggers:
     level: DEBUG
     handlers: [rfile]
     propagate: false
-  {% if use_sqlalchemy -%}
+  {%- if use_sqlalchemy %}
   # The following SQLAlchemy loggers are used for development only to let you
   # understanding what's actually going on inside SQLAlchemy. You can safely
   # remove them as you wish. 
