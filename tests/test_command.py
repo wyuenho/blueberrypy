@@ -10,6 +10,8 @@ import cherrypy
 import jinja2
 import webassets
 
+from yaml import load as load_yaml
+
 from ludibrio import Mock
 
 import blueberrypy
@@ -676,6 +678,75 @@ class ServeCommandTest(unittest.TestCase):
         self.assertIsInstance(cherrypy.tools.orm_session, blueberrypy.tools.SQLAlchemySessionTool)
         self.assertIsInstance(blueberrypy.template_engine.jinja2_env, jinja2.Environment)
         self.assertIsInstance(blueberrypy.template_engine.jinja2_env.assets_environment, webassets.Environment)
+
+    def test_setup_controller(self):
+        app_yml_file = FakeFile(textwrap.dedent("""
+        global:
+            engine.sqlalchemy.on: true
+            environment: test_suite
+        /:
+            tools.sessions.storage_type: redis
+        controllers:
+            controller: !!python/name:tests.test_command.Root
+        sqlalchemy_engine:
+            url: sqlite://
+        email:
+            host: localhost
+            port: 1025
+        """))
+        path_file_mapping = {"/tmp/dev/app.yml": app_yml_file}
+        self._stub_out_path_and_open(path_file_mapping)
+
+        sys.argv = ("blueberrypy -C /tmp serve").split()
+        main()
+
+        controller_config = load_yaml(app_yml_file.getvalue())
+        controller_config.pop("controllers")
+
+        merged_app_config = cherrypy.tree.apps[""].config
+        for k, v in controller_config.iteritems():
+            if k != "global":
+                self.assertEqual(v, merged_app_config[k])
+
+        for k, v in controller_config["global"].iteritems():
+            self.assertEqual(v, merged_app_config["global"][k])
+
+    def test_setup_rest_controller(self):
+        app_yml_file = FakeFile(textwrap.dedent("""
+        global:
+            engine.sqlalchemy.on: true
+            environment: test_suite
+        /:
+            tools.sessions.storage_type: redis
+        controllers:
+            rest_controller: !!python/name:tests.test_command.rest_controller
+            rest_config:
+                /:
+                    tools.orm_session.on: true
+        sqlalchemy_engine:
+            url: sqlite://
+        email:
+            host: localhost
+            port: 1025
+        """))
+        path_file_mapping = {"/tmp/dev/app.yml": app_yml_file}
+        self._stub_out_path_and_open(path_file_mapping)
+
+        sys.argv = ("blueberrypy -C /tmp serve").split()
+        main()
+
+        controller_config = load_yaml(app_yml_file.getvalue())
+        controller_config.pop("controllers")
+        controller_config["/"] = {"request.dispatch": rest_controller,
+                                  "tools.orm_session.on": True}
+
+        merged_app_config = cherrypy.tree.apps["/api"].config
+        for k, v in controller_config.iteritems():
+            if k != "global":
+                self.assertEqual(v, merged_app_config[k])
+
+        for k, v in controller_config["global"].iteritems():
+            self.assertEqual(v, merged_app_config["global"][k])
 
     def test_bind(self):
         self._setup_basic_app_config()
