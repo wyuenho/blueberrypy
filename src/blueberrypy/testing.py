@@ -49,9 +49,11 @@ class ControllerTestCase(CPWebCase):
             controllers_config = config.controllers_config
             controller = controllers_config["controller"]
             script_name = controllers_config.get("script_name", '')
+            controller_config = config.app_config.copy()
+            controller_config.pop("controllers")
             cherrypy.tree.mount(controller(),
                                 script_name=script_name,
-                                config=config.app_config)
+                                config=controller_config)
 
         if config.use_rest_controller:
             controllers_config = config.controllers_config
@@ -64,7 +66,7 @@ class ControllerTestCase(CPWebCase):
                 else:
                     rest_config[k] = dict(extra_rest_config[k])
             for k, v in config.app_config.iteritems():
-                if not k.startswith("/"):
+                if not k.startswith("/") and k != "controllers":
                     rest_config[k] = v
             rest_script_name = controllers_config.get("rest_script_name", "/api")
             cherrypy.tree.mount(None,
