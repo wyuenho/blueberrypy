@@ -31,6 +31,8 @@ class RedisSession(sessions.Session):
 
     prefix = "cp-session:"
 
+    debug = False
+
     @classmethod
     def setup(cls, **kwargs):
 
@@ -40,7 +42,10 @@ class RedisSession(sessions.Session):
             setattr(cls, k, v)
         cls.cache = cache = _RedisClient(**kwargs)
         redis_info = cache.info()
-        logger.info("Redis server ready.\n%s" % pformat(redis_info))
+        if cls.debug:
+            logger.info("Redis server ready.\n%s" % pformat(redis_info))
+        else:
+            logger.info("Redis server ready.")
 
     def _exists(self):
         return self.cache.exists(self.prefix + self.id)
