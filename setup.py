@@ -11,7 +11,6 @@ install_requires = ['CherryPy>=3.2.2',
                     'simplejson>=2.4.0']
 
 dev_requires = ['Sphinx>=1.1.3',
-                'decorator>=3.3.2',
                 'nose>=1.1.3',
                 'nose-testconfig>=0.8',
                 'coverage>=3.5.1',

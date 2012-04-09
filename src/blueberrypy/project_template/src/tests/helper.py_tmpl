@@ -1,4 +1,5 @@
-import decorator
+import functools
+
 from sqlalchemy import *
 from sqlalchemy.orm import sessionmaker, scoped_session
 
@@ -13,15 +14,16 @@ Session = scoped_session(sessionmaker(engine))
 metadata.bind = engine
 
 
-@decorator.decorator
-def orm_session(func, *args, **kwargs):
-    session = Session()
-    try:
-        return func(*args, **kwargs)
-    except:
-        raise
-    finally:
-        session.close()
+def orm_session(func):
+    def _orm_session(*args, **kwargs):
+        session = Session()
+        try:
+            return func(*args, **kwargs)
+        except:
+            raise
+        finally:
+            session.close()
+    return functools.update_wrapper(_orm_session, func)
 
 
 class DBTestFixture(object):

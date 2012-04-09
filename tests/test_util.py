@@ -1,14 +1,15 @@
+import functools
 import hashlib
 import hmac
-import unittest
 
-if not hasattr(unittest.TestCase, "assertIn"):
+try:
     import unittest2 as unittest
+except ImportError:
+    import unittest
 
 from base64 import b64encode
 from datetime import date, time, datetime, timedelta
 
-import decorator
 import testconfig
 
 from geoalchemy import GeometryColumn, Point, WKTSpatialElement, GeometryDDL
@@ -45,15 +46,16 @@ class TestEntity(Base):
 
 GeometryDDL(TestEntity.__table__)
 
-@decorator.decorator
-def orm_session(func, *args, **kwargs):
-    session = Session()
-    try:
-        return func(*args, **kwargs)
-    except:
-        raise
-    finally:
-        session.close()
+def orm_session(func):
+    def _orm_session(*args, **kwargs):
+        session = Session()
+        try:
+            return func(*args, **kwargs)
+        except:
+            raise
+        finally:
+            session.close()
+    return functools.update_wrapper(_orm_session, func)
 
 
 class CSRFTokenTest(unittest.TestCase):
