@@ -34,8 +34,12 @@ you want.
 
 Installation
 ------------
-BlueberryPy is still unreleased, so for now you have to install it directly from
-BitBucket::
+
+Stable version::
+
+   $ pip install blueberrypy
+
+Development version::
 
    $ pip install https://bitbucket.org/wyuenho/blueberrypy
 
@@ -51,7 +55,7 @@ your PATH.
 
 ::
 
-  usage: blueberrypy [-h] [-v] [-c CONFIG_DIR] [command]
+  usage: blueberrypy [-h] [-v] [-C CONFIG_DIR] [command]
 
   BlueberryPy lightweight pluggable Web application framework command line interface.
 
@@ -72,7 +76,7 @@ your PATH.
   optional arguments:
      -h, --help            show this help message and exit
      -v, --version         print version information and exit.
-     -c CONFIG_DIR, --config_dir CONFIG_DIR
+     -C CONFIG_DIR, --config_dir CONFIG_DIR
                            path to the config directory
 
 
@@ -123,7 +127,6 @@ TODO
 
 #. write sphinx doc
 #. minimalist, conditional validators for json utils and form inputs
-#. integrate with weberror, geoalchemy, shapely, geojson
 #. babel integration
 #. request handler cache decorator
 #. modularize skeleton generation
