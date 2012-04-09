@@ -69,4 +69,5 @@ setup(name='blueberrypy',
                               'nose-testconfig>=0.8',
                               'coverage>=3.5.1',
                               'lazr.smtptest>=1.3',
+                              'ludibrio>=3.1.0',
                               'tox>=1.3']})
