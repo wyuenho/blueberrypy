@@ -12,7 +12,7 @@ class Console(InteractiveConsole):
         try:
             import readline
         except ImportError, e:
-            print e
+            print(e)
         else:
             import rlcompleter
 
