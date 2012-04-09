@@ -1,18 +1,27 @@
 import os.path
+import sys
 
 from setuptools import setup, find_packages
 
 
-setup_requires = []
-try:
-    import argparse
-except:
-    setup_requires.append('argparse')
+install_requires = ['CherryPy>=3.2.2',
+                    'Jinja2>=2.6',
+                    'PyYAML>=3.10',
+                    'python-dateutil<2.0',
+                    'simplejson>=2.4.0']
 
-try:
-    from logging.config import dictConfig
-except:
-    setup_requires.append('logutils')
+dev_requires = ['Sphinx>=1.1.3',
+                'decorator>=3.3.2',
+                'nose>=1.1.3',
+                'nose-testconfig>=0.8',
+                'coverage>=3.5.1',
+                'lazr.smtptest>=1.3',
+                'ludibrio>=3.1.0',
+                'tox>=1.3']
+
+if sys.version_info[:2] < (2, 7):
+    install_requires.append("argparse>=1.2.1")
+    install_requires.append("logutils>=0.3.1")
 
 readme_file = open(os.path.abspath(os.path.join(os.path.dirname(__file__), 'README.rst')), 'r')
 readme = readme_file.read()
@@ -45,12 +54,7 @@ setup(name='blueberrypy',
       include_package_data=True,
       entry_points={'console_scripts': ['blueberrypy = blueberrypy.command:main']},
       zip_safe=False,
-      setup_requires=setup_requires,
-      install_requires=['CherryPy>=3.2.2',
-                        'Jinja2>=2.6',
-                        'PyYAML>=3.10',
-                        'python-dateutil<2.0',
-                        'simplejson>=2.4.0'],
+      install_requires=install_requires,
       extras_require={'speedups': ['cdecimal>=2.3',
                                    'MarkupSafe>=0.15',
                                    'hiredis>=0.1.0'],
@@ -63,11 +67,4 @@ setup(name='blueberrypy',
                               'GeoAlchemy>=0.7.1'],
                       'geospatial': ['Shapely>=1.2.14',
                                      'GeoAlchemy>=0.7.1'],
-                      'dev': ['Sphinx>=1.1.3',
-                              'decorator>=3.3.2',
-                              'nose>=1.1.3',
-                              'nose-testconfig>=0.8',
-                              'coverage>=3.5.1',
-                              'lazr.smtptest>=1.3',
-                              'ludibrio>=3.1.0',
-                              'tox>=1.3']})
+                      'dev': dev_requires})

@@ -1,6 +1,9 @@
 import __builtin__
 import textwrap
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 import warnings
 from StringIO import StringIO
 
