@@ -25,9 +25,9 @@ you want.
 - Webassets asset pipeline integrated with Jinja2
 - Application specific logging
 - CherryPy project skeleton generator
-- Preconfigured console for experiementing inside a generated project
+- Preconfigured console for experimenting inside a generated project
 - YAML configuration for CherryPy, Python's logging module and Webassets
-- Convenient Email module for sending text emails
+- Convenient Email module for sending text and HTML emails
 - JSON tools to convert to and from SQLAlchemy models
 - CSRF token
 
