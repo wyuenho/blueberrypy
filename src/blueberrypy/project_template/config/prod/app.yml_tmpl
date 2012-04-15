@@ -36,6 +36,9 @@ global:
   tools.staticfile.filename: favicon.ico
   {%- endif %}
 
+project_metadata:
+  package: {{package}}
+
 controllers:
   {%- if use_controller %}
   controller: !!python/name:{{package}}.controller.Root
