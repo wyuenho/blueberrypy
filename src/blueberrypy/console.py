@@ -30,7 +30,6 @@ class Console(InteractiveConsole):
 
         InteractiveConsole.__init__(self, locals=self.get_locals())
 
-    # TODO support multiple engines
     def make_sqlalchemy_engine(self, prefix="sqlalchemy_engine"):
 
         config = self.config.sqlalchemy_config
@@ -83,6 +82,7 @@ class Console(InteractiveConsole):
             lcls['create_all'] = metadata.create_all
             lcls['drop_all'] = metadata.drop_all
             lcls['session'] = session = Session()
+            session.bind.echo = True
             import atexit
             atexit.register(session.close)
 
