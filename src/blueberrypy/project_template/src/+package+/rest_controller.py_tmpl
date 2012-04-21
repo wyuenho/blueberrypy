@@ -104,7 +104,7 @@ def generic_error_handler(status, message, traceback, version):
             result["traceback"] = traceback
     return json.dumps(result)
 
-def unexpected_error_hander():
+def unexpected_error_handler():
     """request.error_response"""
 
     (typ, value, tb) = sys.exc_info()

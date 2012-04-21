@@ -54,7 +54,7 @@ controllers:
       tools.orm_session.on: true
       {%- endif %}
       error_page.default: !!python/name:{{package}}.rest_controller.generic_error_handler
-      request.error_response: !!python/name:{{package}}.rest_controller.unexpected_error_hander
+      request.error_response: !!python/name:{{package}}.rest_controller.unexpected_error_handler
   {%- endif %}
   {%- if not use_rest_controller and not use_controller %}
   controller:
