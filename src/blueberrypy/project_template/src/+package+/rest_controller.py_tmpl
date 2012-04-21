@@ -95,6 +95,10 @@ rest_controller.connect("delete_user", "/{id}", UserController, action="delete",
 
 def generic_error_handler(status, message, traceback, version):
     """error_page.default"""
+    
+    response = cherrypy.response
+    response.headers['Content-Type'] = "application/json"
+    response.headers.pop('Content-Length', None)
 
     code, reason, _ = cphttputil.valid_status(status)
     result = {"code": code, "reason": reason, "message": message}
