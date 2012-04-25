@@ -54,7 +54,7 @@ class BlueberryPyConfiguration(object):
 
         if environment == "production":
             self.config_dir = config_dir = os.path.join(config_dir, "prod")
-        elif environment == "test_suite" and os.path.exists(config_dir, "test"):
+        elif environment == "test_suite" and os.path.exists(os.path.join(config_dir, "test")):
             self.config_dir = config_dir = os.path.join(config_dir, "test")
         else:
             self.config_dir = config_dir = os.path.join(config_dir, "dev")

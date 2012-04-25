@@ -326,7 +326,9 @@ def console(args, config_dir=None):
 * for you automatically already.                                            *
 *****************************************************************************
 """
-    Console(BlueberryPyConfiguration(config_dir=config_dir)).interact(banner)
+    cherrypy.config.update({"environment": args.environment})
+    Console(BlueberryPyConfiguration(config_dir=config_dir,
+                                     environment=args.environment)).interact(banner)
 
 def create_parser(config_dir=None):
     parser = argparse.ArgumentParser(prog="create",
@@ -399,6 +401,10 @@ def console_parser(config_dir=None):
 
     parser = argparse.ArgumentParser(prog="bundle",
                                      description="An REPL fully configured for experimentation.")
+    parser.add_argument("-e", "--environment", dest="environment",
+                         default=None,
+                         help="apply the given config environment")
+
     return parser
 
 def main():
