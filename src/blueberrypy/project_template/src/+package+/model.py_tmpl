@@ -90,7 +90,7 @@ class User(Base):
     @password.setter
     def password(self, password):
         self._password = self.__encrypt_password(password,
-                                                 b64decode(self.salt))
+                                                 b64decode(str(self.salt)))
 
     def validate_password(self, password):
         """Check the password against existing credentials.
@@ -100,7 +100,7 @@ class User(Base):
         :rtype: bool
         """
         return self.password == self.__encrypt_password(password,
-                                                        b64decode(self.salt))
+                                                        b64decode(str(self.salt)))
 
     sex = Column(Enum("m", "f", name="sex"))
     date_of_birth = Column(Date)
