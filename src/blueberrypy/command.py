@@ -222,7 +222,7 @@ def serve(args, config_dir=None):
     if config.use_jinja2:
         if config.webassets_env:
             configure_jinja2(assets_env=config.webassets_env,
-                                    **config.jinja2_config)
+                             **config.jinja2_config)
         else:
             configure_jinja2(**config.jinja2_config)
 
