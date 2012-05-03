@@ -13,8 +13,8 @@ from datetime import date, time, datetime, timedelta
 import testconfig
 
 from geoalchemy import GeometryColumn, Point, WKTSpatialElement, GeometryDDL
-from sqlalchemy import Column, Integer, Date, DateTime, Time, Interval, \
-    engine_from_config
+from sqlalchemy import Column, Integer, Date, DateTime, Time, Interval, Enum, \
+    ForeignKey, engine_from_config
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -26,12 +26,19 @@ engine = engine_from_config(testconfig.config["sqlalchemy_engine"], '')
 Session = scoped_session(sessionmaker(engine))
 
 Base = declarative_base()
-Base.metadata.bind = engine
+metadata = Base.metadata
+metadata.bind = engine
 
 # remember to setup postgis
 class TestEntity(Base):
 
     __tablename__ = 'testentity'
+
+    discriminator = Column("type", Enum("base", "derived", name="entitytype"),
+                           nullable=False)
+
+    __mapper_args__ = {"polymorphic_on": discriminator,
+                       "polymorphic_identity": "base"}
 
     id = Column(Integer, primary_key=True)
     date = Column(Date)
@@ -44,7 +51,21 @@ class TestEntity(Base):
     def combined(self):
         return datetime.combine(self.date, self.time)
 
+
 GeometryDDL(TestEntity.__table__)
+
+
+class DerivedTestEntity(TestEntity):
+
+    __tablename__ = 'derivedtestentity'
+
+    __mapper_args__ = {"polymorphic_identity": "derived"}
+
+    id = Column(Integer, ForeignKey("testentity.id"), nullable=False,
+                primary_key=True)
+
+    derivedprop = Column(Integer)
+
 
 def orm_session(func):
     def _orm_session(*args, **kwargs):
@@ -101,14 +122,15 @@ class MappingUtilTest(unittest.TestCase):
     @classmethod
     @orm_session
     def setup_class(cls):
-        TestEntity.metadata.create_all(engine)
+        metadata.create_all(engine)
 
-        te = TestEntity(id=1,
-                        date=date(2012, 1, 1),
-                        time=time(0, 0, 0),
-                        datetime=datetime(2012, 1, 1, 0, 0, 0),
-                        interval=timedelta(seconds=3600),
-                        geo=WKTSpatialElement("POINT(45.0 45.0)"))
+        te = DerivedTestEntity(id=1,
+                               date=date(2012, 1, 1),
+                                time=time(0, 0, 0),
+                                derivedprop=2,
+                                datetime=datetime(2012, 1, 1, 0, 0, 0),
+                                interval=timedelta(seconds=3600),
+                                geo=WKTSpatialElement("POINT(45.0 45.0)"))
 
         session = Session()
         session.add(te)
@@ -118,7 +140,7 @@ class MappingUtilTest(unittest.TestCase):
     @classmethod
     @orm_session
     def teardown_class(cls):
-        TestEntity.metadata.drop_all(engine)
+        metadata.drop_all(engine)
     testDownClass = teardown_class
 
     @orm_session
@@ -127,6 +149,8 @@ class MappingUtilTest(unittest.TestCase):
                'time': {'time': '00:00:00'},
                'interval': {'interval': 3600},
                'id': 1,
+               'discriminator': 'derived',
+               'derivedprop': 2,
                'datetime': {'datetime': '2012-01-01T00:00:00'},
                'geo': {'type': 'Point',
                        'coordinates': (45.0, 45.0)}}
@@ -137,18 +161,19 @@ class MappingUtilTest(unittest.TestCase):
 
         self.assertEqual(doc, result)
 
-        serialized_doc = '{"date": {"date": "2012-01-01"}, "datetime": {"datetime": "2012-01-01T00:00:00"}, "geo": {"coordinates": [45.0, 45.0], "type": "Point"}, "id": 1, "interval": {"interval": 3600}, "time": {"time": "00:00:00"}}'
+        serialized_doc = '{"date": {"date": "2012-01-01"}, "datetime": {"datetime": "2012-01-01T00:00:00"}, "derivedprop": 2, "discriminator": "derived", "geo": {"coordinates": [45.0, 45.0], "type": "Point"}, "id": 1, "interval": {"interval": 3600}, "time": {"time": "00:00:00"}}'
         self.assertEqual(serialized_doc, to_mapping(te, format="json",
                                                     sort_keys=True))
 
         doc = {'date': {'date': '2012-01-01'},
                'time': {'time': '00:00:00'},
+               'discriminator': 'derived',
                'datetime': {'datetime': '2012-01-01T00:00:00'},
                'combined': {'datetime': '2012-01-01T00:00:00'},
                'geo': {'type': 'Point', 'coordinates': (45.0, 45.0)}}
 
         self.assertEqual(doc, to_mapping(te, includes=["combined"],
-                                         excludes=["id", "interval"]))
+                                         excludes=["id", "interval", "derivedprop"]))
 
         self.assertEqual("a", to_mapping("a"))
         self.assertEqual(1, to_mapping(1))
@@ -166,16 +191,18 @@ class MappingUtilTest(unittest.TestCase):
                'time': {'time': '00:00:00'},
                'interval': {'interval': 3600},
                'id': 1,
+               'derivedprop': 2,
                'datetime': {'datetime': '2012-01-01T00:00:00'},
                'geo': {'type': 'Point', 'coordinates': (45.0, 45.0)}}
 
-        te = TestEntity()
+        te = DerivedTestEntity()
         te = from_mapping(doc, te)
         self.assertEqual(te.date, date(2012, 1, 1))
         self.assertEqual(te.time, time(0, 0, 0))
         self.assertEqual(te.interval, timedelta(seconds=3600))
         self.assertEqual(te.datetime, datetime(2012, 1, 1, 0, 0, 0))
         self.assertEqual(te.id, 1)
+        self.assertEqual(te.derivedprop, 2)
         self.assertEqual(te.geo.geom_wkt, "POINT (45.0000000000000000 45.0000000000000000)")
 
         te = TestEntity()

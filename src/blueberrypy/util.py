@@ -94,7 +94,7 @@ def to_mapping(value, includes=None, excludes=None, format=None, **json_kwargs):
     if hasattr(value, "__table__"):
         includes = set([includes] if isinstance(includes, basestring) else includes and list(includes) or [])
         excludes = set([excludes] if isinstance(excludes, basestring) else excludes and list(excludes) or [])
-        attrs = set(value.__table__.c.keys())
+        attrs = set([prop.key for prop in value.__mapper__.iterate_properties])
         attrs = includes | attrs - excludes
 
         mapping = {}
@@ -184,7 +184,7 @@ def from_mapping(mapping, instance, excludes=None, format=None):
         raise TypeError(mapping, "mapping must be a dict")
 
     excludes = set([excludes] if isinstance(excludes, basestring) else excludes and list(excludes) or [])
-    attrs = set(instance.__table__.c.keys())
+    attrs = set([prop.key for prop in instance.__mapper__.iterate_properties])
     attrs = attrs - excludes
 
     for k, v in mapping.iteritems():
