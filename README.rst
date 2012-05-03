@@ -129,5 +129,7 @@ TODO
 #. minimalist, conditional validators for json utils and form inputs
 #. babel integration
 #. request handler cache decorator
-#. modularize skeleton generation
+#. search engine integration
+#. alembic or sqlalchemy-migrate integration
+#. modularize skeleton generation and commands
 #. better test coverage
