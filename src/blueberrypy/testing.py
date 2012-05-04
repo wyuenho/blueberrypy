@@ -55,12 +55,16 @@ class ControllerTestCase(CPWebCase):
                         routes_config['/'].update(section['/'])
                     else:
                         routes_config.update(section[path])
-                routes_config.update(config.app_config)
+                app_config = config.app_config.copy()
+                app_config.pop("controllers")
+                routes_config.update(app_config)
                 cherrypy.tree.mount(None, script_name=script_name,
                                     config=routes_config)
             else:
                 controller_config = section.copy()
-                controller_config.update(config.app_config)
+                app_config = config.app_config.copy()
+                app_config.pop("controllers")
+                controller_config.update(app_config)
                 cherrypy.tree.mount(controller(), script_name=script_name,
                                     config=controller_config)
 
