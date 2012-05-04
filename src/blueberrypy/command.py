@@ -30,15 +30,16 @@ from blueberrypy.exc import BlueberryPyNotConfiguredError
 def create(args, config_dir=None):
 
     if args.path:
-        if not os.path.exists(args.path):
-            os.mkdir(args.path)
-            print("Path not found, a directory '%s' has been created." % args.path, file=sys.stderr)
+        path = os.path.abspath(args.path)
+        if not os.path.exists(path):
+            os.mkdir(path)
+            print("Path not found, a directory '%s' has been created." % path, file=sys.stderr)
 
     valid_version_re = re.compile(r"^\d+.\d+(.\d+)*(a|b|c|rc\d+(.\d+)?)?(.post\d+)?(.dev\d+)?$")
     valid_email_re = re.compile(r"^.+@.+$")
 
     blueberrypy_config = {}
-    blueberrypy_config["path"] = args.path or os.getcwdu()
+    blueberrypy_config["path"] = path or os.getcwdu()
     blueberrypy_config["current_year"] = datetime.now().year
 
     blueberrypy_config["project_name"] = raw_input("Project name: ")
