@@ -50,7 +50,7 @@ class SQLAlchemySessionTool(Tool):
         if "passable_exceptions" in conf:
             self.passable_exceptions = conf["passable_exceptions"]
 
-        on_start_resource_priority = conf.pop("on_start_resource_priority", None)
+        on_start_resource_priority = conf.pop("on_start_resource_priority", 10)
         if on_start_resource_priority is None:
             on_start_resource_priority = getattr(self.on_start_resource, "priority",
                                                  self._priority)
