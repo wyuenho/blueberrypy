@@ -276,33 +276,28 @@ def serve(args, config_dir=None):
     if hasattr(cpengine, "console_control_handler"):
         cpengine.console_control_handler.subscribe()
 
-    if config.use_controller:
-        controllers_config = config.controllers_config
-        controller = controllers_config["controller"]
-        script_name = controllers_config.get("script_name", '')
-        controller_config = config.app_config.copy()
-        controller_config.pop("controllers")
-        cherrypy.tree.mount(controller(),
-                            script_name=script_name,
-                            config=controller_config)
-
-    if config.use_rest_controller:
-        controllers_config = config.controllers_config
-        rest_controller = controllers_config["rest_controller"]
-        rest_config = {"/": {"request.dispatch": rest_controller}}
-        extra_rest_config = controllers_config.get("rest_config", {})
-        for k in extra_rest_config.iterkeys():
-            if k in rest_config:
-                rest_config[k].update(extra_rest_config[k])
-            else:
-                rest_config[k] = dict(extra_rest_config[k])
-        for k, v in config.app_config.iteritems():
-            if not k.startswith("/") and k != "controllers":
-                rest_config[k] = v
-        rest_script_name = controllers_config.get("rest_script_name", "/api")
-        cherrypy.tree.mount(None,
-                            script_name=rest_script_name,
-                            config=rest_config)
+    # mount the controllers
+    for script_name, section in config.controllers_config.iteritems():
+        controller = section.pop("controller")
+        if isinstance(controller, cherrypy.dispatch.RoutesDispatcher):
+            routes_config = {'/': {"request.dispatch": controller}}
+            for path in section.iterkeys():
+                if path.strip() == '/':
+                    routes_config['/'].update(section['/'])
+                else:
+                    routes_config.update(section[path])
+            app_config = config.app_config.copy()
+            app_config.pop("controllers")
+            routes_config.update(app_config)
+            cherrypy.tree.mount(None, script_name=script_name,
+                                config=routes_config)
+        else:
+            controller_config = section.copy()
+            app_config = config.app_config.copy()
+            app_config.pop("controllers")
+            controller_config.update(app_config)
+            cherrypy.tree.mount(controller(), script_name=script_name,
+                                config=controller_config)
 
     # Add the blueberrypy config files into CP's autoreload monitor
     # Jinja2 templates are monitored by Jinja2 itself and will autoreload if

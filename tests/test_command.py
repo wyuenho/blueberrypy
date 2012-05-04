@@ -446,20 +446,24 @@ class ServeCommandTest(unittest.TestCase):
         global:
             environment: test_suite
         controllers:
-            controller: !!python/name:tests.test_command.Root
-            rest_controller: !!python/name:tests.test_command.rest_controller
+            '':
+                controller: !!python/name:tests.test_command.Root
+            /api:
+                controller: !!python/name:tests.test_command.rest_controller
         """))
 
         path_file_mapping = {"/tmp/dev/app.yml": app_yml_file}
         self._stub_out_path_and_open(path_file_mapping)
 
-    def test_setup_cherrypy_email(self):
+    def test_setup_email(self):
         app_yml_file = FakeFile(textwrap.dedent("""
         global:
             environment: test_suite
         controllers:
-            controller: !!python/name:tests.test_command.Root
-            rest_controller: !!python/name:tests.test_command.rest_controller
+            '':
+                controller: !!python/name:tests.test_command.Root
+            /api:
+                controller: !!python/name:tests.test_command.rest_controller
         email:
             host: localhost
             port: 1025
@@ -483,8 +487,10 @@ class ServeCommandTest(unittest.TestCase):
             engine.logging.on: true
             environment: test_suite
         controllers:
-            controller: !!python/name:tests.test_command.Root
-            rest_controller: !!python/name:tests.test_command.rest_controller
+            '':
+                controller: !!python/name:tests.test_command.Root
+            /api:
+                controller: !!python/name:tests.test_command.rest_controller
         """))
         logging_yml_file = FakeFile(textwrap.dedent("""
         version: 1
@@ -520,11 +526,13 @@ class ServeCommandTest(unittest.TestCase):
         app_yml_file = FakeFile(textwrap.dedent("""
         global:
             environment: test_suite
-        /:
-            tools.sessions.storage_type: redis
         controllers:
-            controller: !!python/name:tests.test_command.Root
-            rest_controller: !!python/name:tests.test_command.rest_controller
+            '':
+                controller: !!python/name:tests.test_command.Root
+                /:
+                    tools.sessions.storage_type: redis
+            /api:
+                controller: !!python/name:tests.test_command.rest_controller
         """))
 
         path_file_mapping = {"/tmp/dev/app.yml": app_yml_file}
@@ -539,14 +547,16 @@ class ServeCommandTest(unittest.TestCase):
         self.assertTrue(not hasattr(cherrypy.tools, "orm_session"))
         self.assertIsNone(blueberrypy.template_engine.jinja2_env)
 
-    def test_setup_cherrypy_sqlalchemy(self):
+    def test_setup_sqlalchemy(self):
         app_yml_file = FakeFile(textwrap.dedent("""
         global:
             engine.sqlalchemy.on: true
             environment: test_suite
         controllers:
-            controller: !!python/name:tests.test_command.Root
-            rest_controller: !!python/name:tests.test_command.rest_controller
+            '':
+                controller: !!python/name:tests.test_command.Root
+            /api:
+                controller: !!python/name:tests.test_command.rest_controller
         sqlalchemy_engine:
             url: sqlite://
         """))
@@ -563,13 +573,15 @@ class ServeCommandTest(unittest.TestCase):
         self.assertIsInstance(cherrypy.tools.orm_session, blueberrypy.tools.SQLAlchemySessionTool)
         self.assertIsNone(blueberrypy.template_engine.jinja2_env)
 
-    def test_setup_cherrypy_jinja2(self):
+    def test_setup_jinja2(self):
         app_yml_file = FakeFile(textwrap.dedent("""
         global:
             environment: test_suite
         controllers:
-            controller: !!python/name:tests.test_command.Root
-            rest_controller: !!python/name:tests.test_command.rest_controller
+            '':
+                controller: !!python/name:tests.test_command.Root
+            /api:
+                controller: !!python/name:tests.test_command.rest_controller
         jinja2:
             loader: !!python/object:jinja2.loaders.DictLoader
                     mapping: {}
@@ -587,13 +599,15 @@ class ServeCommandTest(unittest.TestCase):
         self.assertTrue(not hasattr(cherrypy.tools, "orm_session"))
         self.assertIsInstance(blueberrypy.template_engine.jinja2_env, jinja2.Environment)
 
-    def test_setup_cherrypy_webassets(self):
+    def test_setup_webassets(self):
         app_yml_file = FakeFile(textwrap.dedent("""
         global:
             environment: test_suite
         controllers:
-            controller: !!python/name:tests.test_command.Root
-            rest_controller: !!python/name:tests.test_command.rest_controller
+            '':
+                controller: !!python/name:tests.test_command.Root
+            /api:
+                controller: !!python/name:tests.test_command.rest_controller
         jinja2:
             loader: !!python/object:jinja2.loaders.DictLoader
                     mapping: {}
@@ -627,11 +641,13 @@ class ServeCommandTest(unittest.TestCase):
             engine.logging.on: true
             engine.sqlalchemy.on: true
             environment: test_suite
-        /:
-            tools.sessions.storage_type: redis
         controllers:
-            controller: !!python/name:tests.test_command.Root
-            rest_controller: !!python/name:tests.test_command.rest_controller
+            '':
+                controller: !!python/name:tests.test_command.Root
+                /:
+                    tools.sessions.storage_type: redis
+            /api:
+                controller: !!python/name:tests.test_command.rest_controller
         sqlalchemy_engine:
             url: sqlite://
         jinja2:
@@ -687,44 +703,11 @@ class ServeCommandTest(unittest.TestCase):
         global:
             engine.sqlalchemy.on: true
             environment: test_suite
-        /:
-            tools.sessions.storage_type: redis
         controllers:
-            controller: !!python/name:tests.test_command.Root
-        sqlalchemy_engine:
-            url: sqlite://
-        email:
-            host: localhost
-            port: 1025
-        """))
-        path_file_mapping = {"/tmp/dev/app.yml": app_yml_file}
-        self._stub_out_path_and_open(path_file_mapping)
-
-        sys.argv = ("blueberrypy -C /tmp serve").split()
-        main()
-
-        controller_config = load_yaml(app_yml_file.getvalue())
-        controller_config.pop("controllers")
-
-        merged_app_config = cherrypy.tree.apps[""].config
-        for k, v in controller_config.iteritems():
-            if k != "global":
-                self.assertEqual(v, merged_app_config[k])
-
-        for k, v in controller_config["global"].iteritems():
-            self.assertEqual(v, merged_app_config["global"][k])
-
-    def test_setup_rest_controller(self):
-        app_yml_file = FakeFile(textwrap.dedent("""
-        global:
-            engine.sqlalchemy.on: true
-            environment: test_suite
-        /:
-            tools.sessions.storage_type: redis
-        controllers:
-            rest_controller: !!python/name:tests.test_command.rest_controller
-            rest_config:
+            '':
+                controller: !!python/name:tests.test_command.Root
                 /:
+                    tools.sessions.storage_type: redis
                     tools.orm_session.on: true
         sqlalchemy_engine:
             url: sqlite://
@@ -738,18 +721,63 @@ class ServeCommandTest(unittest.TestCase):
         sys.argv = ("blueberrypy -C /tmp serve").split()
         main()
 
-        controller_config = load_yaml(app_yml_file.getvalue())
-        controller_config.pop("controllers")
-        controller_config["/"] = {"request.dispatch": rest_controller,
-                                  "tools.orm_session.on": True}
+        app_config = load_yaml(app_yml_file.getvalue())
+        controller_config = app_config["controllers"][''].copy()
+        controller_config.pop("controller")
+
+        merged_app_config = cherrypy.tree.apps[""].config
+        for k, v in controller_config.iteritems():
+            self.assertEqual(v, merged_app_config[k])
+
+        for k, v in app_config["global"].iteritems():
+            self.assertEqual(v, merged_app_config["global"][k])
+
+        for k, v in app_config["email"].iteritems():
+            self.assertEqual(v, merged_app_config["email"][k])
+
+        for k, v in app_config["sqlalchemy_engine"].iteritems():
+            self.assertEqual(v, merged_app_config["sqlalchemy_engine"][k])
+
+    def test_setup_rest_controller(self):
+        app_yml_file = FakeFile(textwrap.dedent("""
+        global:
+            engine.sqlalchemy.on: true
+            environment: test_suite
+        controllers:
+            /api:
+                controller: !!python/name:tests.test_command.rest_controller
+                /:
+                    tools.sessions.storage_type: redis
+                    tools.orm_session.on: true
+        sqlalchemy_engine:
+            url: sqlite://
+        email:
+            host: localhost
+            port: 1025
+        """))
+        path_file_mapping = {"/tmp/dev/app.yml": app_yml_file}
+        self._stub_out_path_and_open(path_file_mapping)
+
+        sys.argv = ("blueberrypy -C /tmp serve").split()
+        main()
+
+        app_config = load_yaml(app_yml_file.getvalue())
+        controller_config = app_config["controllers"]['/api'].copy()
+        controller = controller_config.pop("controller")
+        controller_config["/"].update({"request.dispatch": controller})
 
         merged_app_config = cherrypy.tree.apps["/api"].config
         for k, v in controller_config.iteritems():
-            if k != "global":
-                self.assertEqual(v, merged_app_config[k])
+            self.assertEqual(v, merged_app_config[k])
 
-        for k, v in controller_config["global"].iteritems():
+        for k, v in app_config["global"].iteritems():
             self.assertEqual(v, merged_app_config["global"][k])
+
+        for k, v in app_config["email"].iteritems():
+            self.assertEqual(v, merged_app_config["email"][k])
+
+        for k, v in app_config["sqlalchemy_engine"].iteritems():
+            self.assertEqual(v, merged_app_config["sqlalchemy_engine"][k])
 
     def test_bind(self):
         self._setup_basic_app_config()

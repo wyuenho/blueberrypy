@@ -35,8 +35,9 @@ rest_controller.connect("dummy", "/dummy", DummyRestController, action="dummy")
 class BlueberryPyConfigurationTest(unittest.TestCase):
 
     def setUp(self):
-        self.basic_valid_app_config = {"controllers": {"controller": Root,
-                                                       "rest_controller": rest_controller}}
+        self.basic_valid_app_config = {"controllers": {'': {"controller": Root},
+                                                       "/api": {"controller": rest_controller,
+                                                                '/': {"request.dispatch": rest_controller}}}}
 
     def test_validate(self):
         self.assertRaisesRegexp(BlueberryPyNotConfiguredError,
@@ -123,7 +124,7 @@ class BlueberryPyConfigurationTest(unittest.TestCase):
         config = BlueberryPyConfiguration(app_config=app_config)
         self.assertFalse(config.use_redis)
 
-        app_config.update({"/": {"tools.sessions.storage_type": "redis"}})
+        app_config["controllers"][''].update({"/": {"tools.sessions.storage_type": "redis"}})
 
         config = BlueberryPyConfiguration(app_config=app_config)
         self.assertTrue(config.use_redis)
@@ -183,55 +184,6 @@ class BlueberryPyConfigurationTest(unittest.TestCase):
                                           webassets_env=webassets_env)
         self.assertTrue(config.use_webassets)
 
-    def test_use_controller(self):
-        class Root(object):
-            def index(self):
-                return "hello world!"
-
-        app_config = {"controllers": {"controller": Root}}
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("error")
-            self.assertRaisesRegexp(UserWarning,
-                                    "controller has no exposed method.",
-                                    callable_obj=BlueberryPyConfiguration,
-                                    app_config=app_config)
-
-        class Root(object):
-            def index(self):
-                return "hello world!"
-            index.exposed = True
-
-        app_config = {"controllers": {"controller": Root}}
-        config = BlueberryPyConfiguration(app_config=app_config)
-        self.assertTrue(config.use_controller)
-
-    def test_use_rest_controller(self):
-        rest_controller = cherrypy.dispatch.RoutesDispatcher()
-
-        app_config = {"controllers": {"rest_controller": rest_controller}}
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("error")
-            self.assertRaisesRegexp(UserWarning,
-                                    "rest_controller has no connected routes.",
-                                    callable_obj=BlueberryPyConfiguration,
-                                    app_config=app_config)
-
-        app_config = {"controllers": {"rest_controller": object()}}
-        self.assertRaisesRegexp(BlueberryPyConfigurationError,
-                                "rest_controller must be an instance of cherrypy.dispatch.RoutesDispatcher.",
-                                callable_obj=BlueberryPyConfiguration,
-                                app_config=app_config)
-
-        class DummyRestController(object):
-            def dummy(self, **kwargs):
-                return "hello world!"
-
-        rest_controller.connect("dummy", "/dummy", DummyRestController, action="dummy")
-        app_config = {"controllers": {"rest_controller": rest_controller}}
-
-        config = BlueberryPyConfiguration(app_config=app_config)
-        self.assertTrue(config.use_rest_controller)
-
     def test_jinja2_config(self):
         app_config = self.basic_valid_app_config.copy()
         dict_loader = DictLoader({})
@@ -260,3 +212,60 @@ class BlueberryPyConfigurationTest(unittest.TestCase):
         config = BlueberryPyConfiguration(app_config=app_config)
         self.assertEqual(config.sqlalchemy_config, {"sqlalchemy_engine_Model1": {"url": "sqlite://"},
                                                     "sqlalchemy_engine_Model2": {"url": "sqlite://"}})
+
+    def test_controllers_config(self):
+        app_config = {"global": {}}
+        self.assertRaisesRegexp(BlueberryPyConfigurationError,
+                                "You must declare at least one controller\.",
+                                callable_obj=BlueberryPyConfiguration,
+                                app_config=app_config)
+
+        app_config = {"controllers": {}}
+        self.assertRaisesRegexp(BlueberryPyConfigurationError,
+                                "You must declare at least one controller\.",
+                                callable_obj=BlueberryPyConfiguration,
+                                app_config=app_config)
+
+        app_config = {"controllers": {'api': {'tools.json_in.on': True}}}
+        self.assertRaisesRegexp(BlueberryPyConfigurationError,
+                                "You must define a controller in the \[controllers\]\[api\] section\.",
+                                callable_obj=BlueberryPyConfiguration,
+                                app_config=app_config)
+
+        class Root(object):
+            def index(self):
+                return "hello world!"
+
+        app_config = {"controllers": {"": {"controller": Root}}}
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("error")
+            self.assertRaisesRegexp(UserWarning,
+                                    "Controller '' has no exposed method\.",
+                                    callable_obj=BlueberryPyConfiguration,
+                                    app_config=app_config)
+
+        class Root(object):
+            def index(self):
+                return "hello world!"
+            index.exposed = True
+
+        app_config = {"controllers": {"": {"controller": Root}}}
+        config = BlueberryPyConfiguration(app_config=app_config)
+
+        rest_controller = cherrypy.dispatch.RoutesDispatcher()
+
+        app_config = {"controllers": {"/api": {"controller": rest_controller}}}
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("error")
+            self.assertRaisesRegexp(UserWarning,
+                                    "Controller '/api' has no connected routes\.",
+                                    callable_obj=BlueberryPyConfiguration,
+                                    app_config=app_config)
+
+        class DummyRestController(object):
+            def dummy(self, **kwargs):
+                return "hello world!"
+
+        rest_controller.connect("dummy", "/dummy", DummyRestController, action="dummy")
+        app_config = {"controllers": {"/api": {"controller": rest_controller}}}
+        config = BlueberryPyConfiguration(app_config=app_config)

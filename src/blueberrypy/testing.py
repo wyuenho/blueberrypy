@@ -45,30 +45,22 @@ class ControllerTestCase(CPWebCase):
 
         cherrypy.config.update(config.app_config)
 
-        if config.use_controller:
-            controllers_config = config.controllers_config
-            controller = controllers_config["controller"]
-            script_name = controllers_config.get("script_name", '')
-            controller_config = config.app_config.copy()
-            controller_config.pop("controllers")
-            cherrypy.tree.mount(controller(),
-                                script_name=script_name,
-                                config=controller_config)
+        # mount the controllers
+        for script_name, section in config.controllers_config.iteritems():
+            controller = section.pop("controller")
+            if isinstance(controller, cherrypy.dispatch.RoutesDispatcher):
+                routes_config = {'/': {"request.dispatch": controller}}
+                for path in section.iterkeys():
+                    if path.strip() == '/':
+                        routes_config['/'].update(section['/'])
+                    else:
+                        routes_config.update(section[path])
+                routes_config.update(config.app_config)
+                cherrypy.tree.mount(None, script_name=script_name,
+                                    config=routes_config)
+            else:
+                controller_config = section.copy()
+                controller_config.update(config.app_config)
+                cherrypy.tree.mount(controller(), script_name=script_name,
+                                    config=controller_config)
 
-        if config.use_rest_controller:
-            controllers_config = config.controllers_config
-            rest_controller = controllers_config["rest_controller"]
-            rest_config = {"/": {"request.dispatch": rest_controller}}
-            extra_rest_config = controllers_config.get("rest_config", {})
-            for k in extra_rest_config.iterkeys():
-                if k in rest_config:
-                    rest_config[k].update(extra_rest_config[k])
-                else:
-                    rest_config[k] = dict(extra_rest_config[k])
-            for k, v in config.app_config.iteritems():
-                if not k.startswith("/") and k != "controllers":
-                    rest_config[k] = v
-            rest_script_name = controllers_config.get("rest_script_name", "/api")
-            cherrypy.tree.mount(None,
-                                script_name=rest_script_name,
-                                config=rest_config)

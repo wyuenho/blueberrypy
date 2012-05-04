@@ -2,6 +2,7 @@ import difflib
 import inspect
 import logging
 import os.path
+import textwrap
 import warnings
 import collections
 
@@ -121,9 +122,13 @@ class BlueberryPyConfiguration(object):
 
     @property
     def use_redis(self):
-        for section in self.app_config.itervalues():
-            if section.get("tools.sessions.storage_type") == "redis":
-                return True
+        if self.controllers_config:
+            for _, controller_config in self.controllers_config.iteritems():
+                controller_config = controller_config.copy()
+                controller_config.pop("controller")
+                for path_config in controller_config.itervalues():
+                    if path_config.get("tools.sessions.storage_type") == "redis":
+                        return True
         return False
 
     @property
@@ -137,18 +142,6 @@ class BlueberryPyConfiguration(object):
     @property
     def use_webassets(self):
         return self.use_jinja2 and self.app_config["jinja2"].get("use_webassets", False)
-
-    @property
-    def use_controller(self):
-        if self.controllers_config:
-            return "controller" in self.controllers_config
-        return False
-
-    @property
-    def use_rest_controller(self):
-        if self.controllers_config:
-            return "rest_controller" in self.controllers_config
-        return False
 
     @property
     def use_email(self):
@@ -184,7 +177,8 @@ class BlueberryPyConfiguration(object):
                 saconf = self.app_config["sqlalchemy_engine"].copy()
                 return {"sqlalchemy_engine": saconf}
             else:
-                return dict([(k, v) for k, v in self.app_config.iteritems() if k.startswith("sqlalchemy_engine")])
+                return dict([(k, v) for k, v in self.app_config.iteritems()
+                             if k.startswith("sqlalchemy_engine")])
 
     @property
     def email_config(self):
@@ -269,25 +263,22 @@ class BlueberryPyConfiguration(object):
                         closest_match = (closest_match and " Did you mean %r?" % closest_match[0]) or ""
                         warnings.warn(("Unknown key %r found for [email]." % key) + closest_match)
 
-        if not self.use_controller and not self.use_rest_controller:
-            raise BlueberryPyConfigurationError("You must have at least a "
-                                                "controller or a "
-                                                "rest_controller configured to "
-                                                "use")
-
-        if self.use_controller:
-            controller = self.controllers_config["controller"]
-            for _, member in inspect.getmembers(controller, inspect.ismethod):
-                if hasattr(member, "exposed") and member.exposed == True:
-                    break
-            else:
-                raise warnings.warn("controller has no exposed method.")
-
-        if self.use_rest_controller:
-            rest_controller = self.controllers_config["rest_controller"]
-            if not isinstance(rest_controller,
-                              cherrypy.dispatch.RoutesDispatcher):
-                raise BlueberryPyConfigurationError("rest_controller must be an"
-                                                    " instance of cherrypy.dispatch.RoutesDispatcher.")
-            if not rest_controller.controllers:
-                warnings.warn("rest_controller has no connected routes.")
+        if not self.controllers_config:
+            raise BlueberryPyConfigurationError("You must declare at least one controller.")
+        else:
+            for script_name, section in self.controllers_config.iteritems():
+                controller = section.get("controller")
+                if controller is None:
+                    raise BlueberryPyConfigurationError("You must define a controller in the [controllers][%s] section." % script_name)
+                elif isinstance(controller, cherrypy.dispatch.RoutesDispatcher):
+                    if not controller.controllers:
+                        warnings.warn("Controller %r has no connected routes." % script_name)
+                else:
+                    for member_name, member_obj in inspect.getmembers(controller):
+                        if member_name == "exposed" and member_obj:
+                            break
+                        elif (hasattr(member_obj, "exposed") and
+                              member_obj.exposed == True):
+                            break
+                    else:
+                        raise warnings.warn("Controller %r has no exposed method." % script_name)

@@ -1,64 +1,60 @@
+project_metadata:
+  package: {{package}}
+
 global:
   environment: production
   engine.logging.on: true
   {%- if use_sqlalchemy %}
   engine.sqlalchemy.on: true
   {%- endif %}
-/:
-  tools.proxy.on: true
-  {%- if use_sqlalchemy %}
-  tools.orm_session.on: true
-  {%- endif %}
-  tools.sessions.on: true
-  {%- if use_redis %}
-  tools.sessions.storage_type: redis
-  {% else -%}
-  tools.sessions.storage_type: memcached
-  {%- endif %}
-  {%- if use_controller %}
-  tools.staticdir.root: {{path}}/static
-  tools.staticfile.root: {{path}}/static
-/css:
-  tools.sessions.on: false
-  tools.staticdir.on: true
-  tools.staticdir.dir: css
-/js:
-  tools.sessions.on: false
-  tools.staticdir.on: true
-  tools.staticdir.dir: js
-/img:
-  tools.sessions.on: false
-  tools.staticdir.on: true
-  tools.staticdir.dir: img
-/favicon.ico:
-  tools.sessions.on: false
-  tools.staticfile.on: true
-  tools.staticfile.filename: favicon.ico
-  {%- endif %}
-
-project_metadata:
-  package: {{package}}
 
 controllers:
   {%- if use_controller %}
-  controller: !!python/name:{{package}}.controller.Root
-  script_name: ''
+  '':
+    controller: !!python/name:{{package}}.controller.Root
+    /:
+      tools.proxy.on: true
+      {%- if use_sqlalchemy %}
+      tools.orm_session.on: true
+      {%- endif %}
+      tools.sessions.on: true
+      {%- if use_redis %}
+      tools.sessions.storage_type: redis
+      {% else -%}
+      tools.sessions.storage_type: memcached
+      {%- endif %}
+      {%- if use_controller %}
+      tools.staticdir.root: {{path}}/static
+      tools.staticfile.root: {{path}}/static
+    /css:
+      tools.sessions.on: false
+      tools.staticdir.on: true
+      tools.staticdir.dir: css
+    /js:
+      tools.sessions.on: false
+      tools.staticdir.on: true
+      tools.staticdir.dir: js
+    /img:
+      tools.sessions.on: false
+      tools.staticdir.on: true
+      tools.staticdir.dir: img
+    /favicon.ico:
+      tools.sessions.on: false
+      tools.staticfile.on: true
+      tools.staticfile.filename: favicon.ico
+      {%- endif %}
   {%- endif %}
   {%- if use_rest_controller %}
-  rest_controller: !!python/name:{{package}}.rest_controller.rest_controller
-  rest_script_name: /api
-  rest_config:
+  /api:
+    controller: !!python/name:{{package}}.rest_controller.rest_controller
     /:
+      request.dispatch: !!python/name:{{package}}.rest_controller.rest_controller
       tools.proxy.on: true
       {%- if use_sqlalchemy %}
       tools.orm_session.on: true
       {%- endif %}
       error_page.default: !!python/name:{{package}}.rest_controller.generic_error_handler
       request.error_response: !!python/name:{{package}}.rest_controller.unexpected_error_handler
-  {%- endif %}
-  {%- if not use_rest_controller and not use_controller %}
-  controller:
-  script_name: ''
   {%- endif %}
 
 {% if use_sqlalchemy -%}
