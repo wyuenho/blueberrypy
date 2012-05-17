@@ -15,7 +15,7 @@ import testconfig
 from geoalchemy import GeometryColumn, Point, WKTSpatialElement, GeometryDDL
 from sqlalchemy import Column, Integer, Date, DateTime, Time, Interval, Enum, \
     ForeignKey, engine_from_config
-from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy.orm import sessionmaker, scoped_session, relationship
 from sqlalchemy.ext.declarative import declarative_base
 
 from blueberrypy.util import CSRFToken, pad_block_cipher_message, \
@@ -29,10 +29,17 @@ Base = declarative_base()
 metadata = Base.metadata
 metadata.bind = engine
 
+
+class RelatedEntity(Base):
+
+    __tablename__ = "related"
+
+    id = Column(Integer, autoincrement=True, primary_key=True)
+
 # remember to setup postgis
 class TestEntity(Base):
 
-    __tablename__ = 'testentity'
+    __tablename__ = "testentity"
 
     discriminator = Column("type", Enum("base", "derived", name="entitytype"),
                            nullable=False)
@@ -51,13 +58,16 @@ class TestEntity(Base):
     def combined(self):
         return datetime.combine(self.date, self.time)
 
+    related_id = Column(Integer, ForeignKey("related.id"))
+    related = relationship(RelatedEntity, uselist=False)
+
 
 GeometryDDL(TestEntity.__table__)
 
 
 class DerivedTestEntity(TestEntity):
 
-    __tablename__ = 'derivedtestentity'
+    __tablename__ = "derivedtestentity"
 
     __mapper_args__ = {"polymorphic_identity": "derived"}
 
@@ -126,15 +136,19 @@ class MappingUtilTest(unittest.TestCase):
 
         te = DerivedTestEntity(id=1,
                                date=date(2012, 1, 1),
-                                time=time(0, 0, 0),
-                                derivedprop=2,
-                                datetime=datetime(2012, 1, 1, 0, 0, 0),
-                                interval=timedelta(seconds=3600),
-                                geo=WKTSpatialElement("POINT(45.0 45.0)"))
+                               time=time(0, 0, 0),
+                               derivedprop=2,
+                               datetime=datetime(2012, 1, 1, 0, 0, 0),
+                               interval=timedelta(seconds=3600),
+                               geo=WKTSpatialElement("POINT(45.0 45.0)"))
 
         session = Session()
         session.add(te)
         session.commit()
+
+        te.related = RelatedEntity()
+        session.commit()
+
     setUpClass = setup_class
 
     @classmethod
@@ -150,6 +164,7 @@ class MappingUtilTest(unittest.TestCase):
                'interval': {'interval': 3600},
                'id': 1,
                'discriminator': 'derived',
+               'related_id': 1,
                'derivedprop': 2,
                'datetime': {'datetime': '2012-01-01T00:00:00'},
                'geo': {'type': 'Point',
@@ -161,13 +176,14 @@ class MappingUtilTest(unittest.TestCase):
 
         self.assertEqual(doc, result)
 
-        serialized_doc = '{"date": {"date": "2012-01-01"}, "datetime": {"datetime": "2012-01-01T00:00:00"}, "derivedprop": 2, "discriminator": "derived", "geo": {"coordinates": [45.0, 45.0], "type": "Point"}, "id": 1, "interval": {"interval": 3600}, "time": {"time": "00:00:00"}}'
+        serialized_doc = '{"date": {"date": "2012-01-01"}, "datetime": {"datetime": "2012-01-01T00:00:00"}, "derivedprop": 2, "discriminator": "derived", "geo": {"coordinates": [45.0, 45.0], "type": "Point"}, "id": 1, "interval": {"interval": 3600}, "related_id": 1, "time": {"time": "00:00:00"}}'
         self.assertEqual(serialized_doc, to_mapping(te, format="json",
                                                     sort_keys=True))
 
         doc = {'date': {'date': '2012-01-01'},
                'time': {'time': '00:00:00'},
                'discriminator': 'derived',
+               'related_id': 1,
                'datetime': {'datetime': '2012-01-01T00:00:00'},
                'combined': {'datetime': '2012-01-01T00:00:00'},
                'geo': {'type': 'Point', 'coordinates': (45.0, 45.0)}}

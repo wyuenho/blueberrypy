@@ -13,6 +13,8 @@ from datetime import date, time, datetime, timedelta
 
 from dateutil.parser import parse as parse_date
 
+from sqlalchemy.orm import RelationshipProperty
+
 try:
     from geoalchemy.base import SpatialElement, WKTSpatialElement
     from shapely.geometry import asShape, mapping as asGeoJSON
@@ -63,8 +65,8 @@ def to_mapping(value, includes=None, excludes=None, format=None, **json_kwargs):
     returned mapping.
     
     **Note:** columns with names starting with '_' and attributes that are
-    containers (e.g. relationship attributes) will never be included in the
-    returned mapping.
+    containers (e.g. relationship attributes) will not be included in the
+    returned mapping by default unless specified by `includes`.
     
     Complex values
     --------------
@@ -94,7 +96,7 @@ def to_mapping(value, includes=None, excludes=None, format=None, **json_kwargs):
     if hasattr(value, "__table__"):
         includes = set([includes] if isinstance(includes, basestring) else includes and list(includes) or [])
         excludes = set([excludes] if isinstance(excludes, basestring) else excludes and list(excludes) or [])
-        attrs = set([prop.key for prop in value.__mapper__.iterate_properties])
+        attrs = set([prop.key for prop in value.__mapper__.iterate_properties if not isinstance(prop, RelationshipProperty)])
         attrs = includes | attrs - excludes
 
         mapping = {}
@@ -174,7 +176,10 @@ def from_mapping(mapping, instance, excludes=None, format=None):
     support for data validation. If you are using this function to directly 
     mass-assign user supplied data to your model instances, make sure you have 
     validated the data first. In a future version of blueberrypy, integration 
-    with a form validation library will be provided to ease this process. 
+    with a form validation library will be provided to ease this process.
+    
+    **Note:** If you supply collections values, the entire collection on the
+    entity is replaced instead of merging.
     """
 
     if format == "json":
