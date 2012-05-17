@@ -47,6 +47,7 @@ class ControllerTestCase(CPWebCase):
 
         # mount the controllers
         for script_name, section in config.controllers_config.iteritems():
+            section = section.copy()
             controller = section.pop("controller")
             if isinstance(controller, cherrypy.dispatch.RoutesDispatcher):
                 routes_config = {'/': {"request.dispatch": controller}}
@@ -61,9 +62,9 @@ class ControllerTestCase(CPWebCase):
                 cherrypy.tree.mount(None, script_name=script_name,
                                     config=routes_config)
             else:
-                controller_config = section.copy()
                 app_config = config.app_config.copy()
                 app_config.pop("controllers")
+                controller_config = section.copy()
                 controller_config.update(app_config)
                 cherrypy.tree.mount(controller(), script_name=script_name,
                                     config=controller_config)
