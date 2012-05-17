@@ -29,6 +29,7 @@ from blueberrypy.exc import BlueberryPyNotConfiguredError
 
 def create(args, config_dir=None):
 
+    path = None
     if args.path:
         path = os.path.abspath(args.path)
         if not os.path.exists(path):
