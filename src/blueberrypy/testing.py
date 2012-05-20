@@ -55,7 +55,7 @@ class ControllerTestCase(CPWebCase):
                     if path.strip() == '/':
                         routes_config['/'].update(section['/'])
                     else:
-                        routes_config.update(section[path])
+                        routes_config[path] = section[path].copy()
                 app_config = config.app_config.copy()
                 app_config.pop("controllers")
                 routes_config.update(app_config)
