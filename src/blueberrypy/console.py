@@ -110,5 +110,5 @@ class Console(InteractiveConsole):
                 r = raw_input("Do you wish to commit your "
                               "database changes? [Y/n]")
                 if not r.lower().startswith("n"):
-                    self.push("session.flush()")
+                    self.push("session.commit()")
             raise
