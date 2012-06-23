@@ -40,9 +40,9 @@ class UserController(object):
     def show(self, id, **kwargs):
         {%- if use_sqlalchemy %}
         id = int(id)
-        user = rest_api.find_user_by_id(cherrypy.request.orm_session, id)
+        user = api.find_user_by_id(cherrypy.request.orm_session, id)
         if user:
-            return to_mapping(user, includes="age", excludes=("password", "salt").
+            return to_mapping(user, includes="age", excludes=("password", "salt"),
                               sort_keys=True)
         raise HTTPError(404)
         {%- else %}
@@ -55,7 +55,7 @@ class UserController(object):
         id = int(id)
         req = cherrypy.request
         orm_session = req.orm_session
-        user = rest_api.find_user_by_id(orm_session, id)
+        user = api.find_user_by_id(orm_session, id)
         if user:
             user = from_mapping(req.json, user)
             orm_session.commit()
@@ -71,7 +71,7 @@ class UserController(object):
         id = int(id)
         req = cherrypy.request
         orm_session = req.orm_session
-        if not rest_api.delete_user_by_id(orm_session, id):
+        if not api.delete_user_by_id(orm_session, id):
             raise HTTPError(404)
         else:
             orm_session.commit()
