@@ -20,6 +20,7 @@ EGG-INFO
 .pydevproject
 .settings
 bpython.desktop
+*sublime-*
 
 # virtualenv and distutils files
 build
