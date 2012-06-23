@@ -11,7 +11,7 @@ install_requires = ['CherryPy>=3.2.2',
                     'simplejson>=2.4.0']
 
 dev_requires = ['Sphinx>=1.1.3',
-                'nose>=1.1.3',
+                'nose>=1.1.2',
                 'nose-testconfig>=0.8',
                 'coverage>=3.5.1',
                 'lazr.smtptest>=1.3',
