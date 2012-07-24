@@ -18,13 +18,14 @@ from sqlalchemy.ext.declarative import declarative_base
 from testconfig import config as testconfig
 
 from blueberrypy.plugins import SQLAlchemyPlugin
-from blueberrypy.tools import SQLAlchemySessionTool
+from blueberrypy.tools import MultiHookPointTool, SQLAlchemySessionTool
 
 
 def get_config(section_name):
     return dict([(str(k), v) for k, v in testconfig[section_name].iteritems()])
 
 Base = declarative_base()
+
 
 class User(Base):
     __tablename__ = 'user'
@@ -38,6 +39,81 @@ class Address(Base):
     address = Column(Unicode(128), nullable=False, unique=True)
 
 
+class MultiHookPointToolTest(helper.CPWebCase, unittest.TestCase):
+
+    @staticmethod
+    def setup_server():
+
+        class TestMultiHookPointTool(MultiHookPointTool):
+
+            def on_start_resource(self, param=None):
+                req = cherrypy.request
+                req.on_start_resource_param = param
+
+            def before_request_body(self, param=None):
+                req = cherrypy.request
+                req.before_request_body_param = param
+
+            def before_handler(self, param=None):
+                req = cherrypy.request
+                req.before_handler_param = param
+
+            def before_finalize(self, param=None):
+                resp = cherrypy.response
+                resp.headers['x-before-finalize'] = param
+
+            def on_end_resource(self, param=None):
+                resp = cherrypy.response
+                resp.header_list += ('x-on-end-resource', str(param)),
+
+            def before_error_response(self, param=None):
+                resp = cherrypy.response
+                resp.headers['x-before-error-response'] = param
+
+            def after_error_response(self, param=None):
+                resp = cherrypy.response
+                resp.headers['x-after-error-response'] = param
+
+            def on_end_request(self, param=None):
+                MultiHookPointToolTest.on_end_request_param = param
+
+        class Root(object):
+
+            _cp_config = {"tools.test_multi_hook_point.on": True}
+
+            @cherrypy.expose
+            def success(self):
+                req = cherrypy.request
+                return str(req.on_start_resource_param | req.before_request_body_param | req.before_handler_param)
+            success._cp_config = {"tools.test_multi_hook_point.on_start_resource.param": 1,
+                                  "tools.test_multi_hook_point.before_request_body.param": 2,
+                                  "tools.test_multi_hook_point.before_handler.param": 4,
+                                  "tools.test_multi_hook_point.before_finalize.param": 11,
+                                  "tools.test_multi_hook_point.on_end_resource.param": 13,
+                                  "tools.test_multi_hook_point.on_end_request.param": 19}
+
+            @cherrypy.expose
+            def failure(self):
+                return 1 / 0
+            failure._cp_config = {"tools.test_multi_hook_point.before_error_response.param": 7,
+                                  "tools.test_multi_hook_point.after_error_response.param": 8}
+
+        cherrypy.tools.test_multi_hook_point = TestMultiHookPointTool()
+        cherrypy.tree.mount(Root())
+
+    def test_success(self):
+        self.getPage("/success")
+        self.assertInBody(str(7))
+        self.assertHeader("x-before-finalize", 11)
+        self.assertHeader("x-on-end-resource", 13)
+        self.assertEqual(MultiHookPointToolTest.on_end_request_param, 19)
+
+    def test_failure(self):
+        self.getPage("/failure")
+        self.assertHeader("x-before-error-response", 7)
+        self.assertHeader("x-after-error-response", 8)
+
+
 class SQLAlchemySessionToolSingleEngineTest(helper.CPWebCase, unittest.TestCase):
 
     engine = engine_from_config(get_config('sqlalchemy_engine'), '')
@@ -47,8 +123,7 @@ class SQLAlchemySessionToolSingleEngineTest(helper.CPWebCase, unittest.TestCase)
 
         super(SQLAlchemySessionToolSingleEngineTest, cls).setup_class()
 
-        User.metadata.create_all(cls.engine)
-        Address.metadata.create_all(cls.engine)
+        Base.metadata.create_all(cls.engine)
     setUpClass = setup_class
 
     @classmethod
@@ -56,16 +131,14 @@ class SQLAlchemySessionToolSingleEngineTest(helper.CPWebCase, unittest.TestCase)
 
         super(SQLAlchemySessionToolSingleEngineTest, cls).teardown_class()
 
-        User.metadata.drop_all(cls.engine)
-        Address.metadata.drop_all(cls.engine)
+        Base.metadata.drop_all(cls.engine)
     tearDownClass = teardown_class
 
     @staticmethod
     def setup_server():
         class SingleEngine(object):
 
-            _cp_config = {'tools.orm_session.on': True,
-                          'tools.orm_session.passable_exceptions': [HTTPRedirect, InternalRedirect]}
+            _cp_config = {'tools.orm_session.on': True}
 
             def save_user_and_address(self):
                 session = cherrypy.request.orm_session
@@ -117,8 +190,7 @@ class SQLAlchemySessionToolSingleEngineTest(helper.CPWebCase, unittest.TestCase)
                 return json.dumps({'id': bob.id, 'name': bob.name})
             raise_passable_exception_query.exposed = True
 
-        saconf = {'sqlalchemy_engine': get_config('sqlalchemy_engine')}
-        cherrypy.engine.sqlalchemy = SQLAlchemyPlugin(cherrypy.engine, saconf)
+        cherrypy.engine.sqlalchemy = SQLAlchemyPlugin(cherrypy.engine, testconfig)
         cherrypy.tools.orm_session = SQLAlchemySessionTool()
         cherrypy.config.update({'engine.sqlalchemy.on': True})
         cherrypy.tree.mount(SingleEngine())
@@ -163,16 +235,17 @@ class SQLAlchemySessionToolSingleEngineTest(helper.CPWebCase, unittest.TestCase)
 
 class SQLAlchemySessionToolTwoPhaseTest(helper.CPWebCase, unittest.TestCase):
 
-    engine = engine_from_config(get_config('sqlalchemy_engine'), '')
-    engine_bindings = {User: engine, Address: engine}
+    # only used for setup and teardown
+    engine_bindings = {User: engine_from_config(get_config('sqlalchemy_engine_tests.test_tools.User'), ''),
+                       Address: engine_from_config(get_config('sqlalchemy_engine_tests.test_tools.Address'), '')}
 
     @classmethod
     def setup_class(cls):
 
         super(SQLAlchemySessionToolTwoPhaseTest, cls).setup_class()
 
-        User.metadata.create_all(cls.engine)
-        Address.metadata.create_all(cls.engine)
+        User.metadata.create_all(cls.engine_bindings[User])
+        Address.metadata.create_all(cls.engine_bindings[Address])
     setUpClass = setup_class
 
     @classmethod
@@ -180,8 +253,8 @@ class SQLAlchemySessionToolTwoPhaseTest(helper.CPWebCase, unittest.TestCase):
 
         super(SQLAlchemySessionToolTwoPhaseTest, cls).teardown_class()
 
-        User.metadata.drop_all(cls.engine_bindings[User])
-        Address.metadata.drop_all(cls.engine_bindings[Address])
+        User.metadata.create_all(cls.engine_bindings[User])
+        Address.metadata.create_all(cls.engine_bindings[Address])
     tearDownClass = teardown_class
 
     @staticmethod
@@ -189,8 +262,7 @@ class SQLAlchemySessionToolTwoPhaseTest(helper.CPWebCase, unittest.TestCase):
 
         class TwoPhase(object):
 
-            _cp_config = {'tools.orm_session.on': True,
-                          'tools.orm_session.passable_exceptions': [HTTPRedirect, InternalRedirect]}
+            _cp_config = {'tools.orm_session.on': True}
 
             def save_user_and_address(self):
                 session = cherrypy.request.orm_session
@@ -252,9 +324,7 @@ class SQLAlchemySessionToolTwoPhaseTest(helper.CPWebCase, unittest.TestCase):
             raise_passable_exception_query.exposed = True
             raise_passable_exception_query._cp_config = {'tools.orm_session.bindings': [User]}
 
-        saconf = {'sqlalchemy_engine_tests.test_tools.User': get_config('sqlalchemy_engine'),
-                  'sqlalchemy_engine_tests.test_tools.Address': get_config('sqlalchemy_engine')}
-        cherrypy.engine.sqlalchemy = SQLAlchemyPlugin(cherrypy.engine, saconf)
+        cherrypy.engine.sqlalchemy = SQLAlchemyPlugin(cherrypy.engine, testconfig)
         cherrypy.tools.orm_session = SQLAlchemySessionTool()
         cherrypy.config.update({'engine.sqlalchemy.on': True})
         cherrypy.tree.mount(TwoPhase())

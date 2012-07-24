@@ -1,7 +1,8 @@
 import logging
+import warnings
 
 import cherrypy
-from cherrypy import Tool
+from cherrypy._cptools import Tool, _getargs
 
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
@@ -13,7 +14,90 @@ __all__ = ["SQLAlchemySessionTool"]
 logger = logging.getLogger(__name__)
 
 
-class SQLAlchemySessionTool(Tool):
+class MultiHookPointTool(Tool):
+    """MultiHookPointTool provides subclasses the infrastructure for writing
+    Tools that need to run at more than one request hook point.
+    
+    Subclasses can simply provide methods with the same name as the hook points
+    and MuiltiHookPointTool will automatically wire each hook up to the request
+    hook points when turned on in the configuration.
+    """
+
+    def __init__(self, name=None, priority=50):
+        """Subclasses of MultiHookPointTool do not need to provide a default
+        hook point and a callable because there's no such thing. As such,
+        subclasses will most likely only provide a default priority for the
+        hook point callables the subclasses provide.
+        
+        Same as the Tool class CherryPy supplies, the `name` parameter is set
+        automatically when a MultiHookPointTool instance is attached to a
+        ToolBox if not supplied.
+        
+        Lastly, similar to Tool, this constructor will also loop through all
+        the hooks and attach their arguments directly to the Tool instance.
+        The only difference is all the tool arguments are prefixed with their
+        hook point names to avoid name conflicts.
+        
+        Example::
+            
+            app_config = {
+                "/": {
+                    "tools.my_multipoint_tool.on": True,
+                    "tools.my_multipoint_tools.before_handler.echo": True,
+                    "tools.my_multipoint_tools.before_finalize.priority": 80
+                }
+            }
+        """
+        self._name = name
+        self._priority = priority
+        self._setargs()
+
+    def _setargs(self):
+        for hook_point in cherrypy._cprequest.hookpoints:
+            if hasattr(self, hook_point):
+                hook = getattr(self, hook_point)
+                try:
+                    for arg in _getargs(hook):
+                        setattr(self, hook_point + "_" + arg, None)
+                # IronPython 1.0 raises NotImplementedError because
+                # inspect.getargspec tries to access Python bytecode
+                # in co_code attribute.
+                except NotImplementedError:
+                    pass
+                # IronPython 1B1 may raise IndexError in some cases,
+                # but if we trap it here it doesn't prevent CP from working.
+                except IndexError:
+                    pass
+
+    def _setup(self):
+
+        request = cherrypy.request
+
+        conf = self._merged_args()
+
+        for hook_point in cherrypy._cprequest.hookpoints:
+
+            if hasattr(self, hook_point):
+                hook = getattr(self, hook_point)
+                if not callable(hook):
+                    warnings.warn("%r is not a callable." % hook)
+
+                hook_conf = {}
+                for k, v in conf.iteritems():
+                    if k.startswith(hook_point):
+                        k = k.replace(hook_point, "").split(".", 1)[-1]
+                        hook_conf[k] = v
+
+                priority_key = hook_point + ".priority"
+                hook_priority = self._priority if priority_key not in hook_conf else hook_conf[priority_key]
+                request.hooks.attach(hook_point, hook, hook_priority, **hook_conf)
+
+    def __call__(self, *args, **kwargs):
+        raise NotImplementedError("This %r instance cannot be called directly." % \
+            self.__class__.__name__)
+
+
+class SQLAlchemySessionTool(MultiHookPointTool):
     """A CherryPy tool to process SQLAlchemy ORM sessions for requests.
 
     This tools sets up a scoped, possibly multi-engine SQLAlchemy ORM session to
@@ -24,58 +108,13 @@ class SQLAlchemySessionTool(Tool):
     in the end.
 
     As this tool hooks up _3_ callables to the request, this tools will also
-    accept 3 `priority` options - `on_start_resource_priority`, 
-    `before_finalize_priority` and `after_error_response`. The `priority` option
-    is still accepted as a default for all 3 hook points.
+    accept 3 `priority` options - `on_start_resource.priority`, 
+    `before_finalize.priority` and `after_error_response.priority`. The `priority`
+    option is still accepted as a default for all 3 hook points.
     """
 
-    def __init__(self):
-        doc = self.__doc__
-        Tool.__init__(self, "on_start_resource", self.on_start_resource)
-        # Revert the changed doc Tool.__init__ did.
-        self.__doc__ = doc
-        # Remove the self attr set by _setargs().
-        del self.self
-
-    def __call__(self, *args, **kwargs):
-        raise NotImplementedError, "This %r instance cannot be called directly." % \
-            self.__class__.__name__
-
-    def _setup(self):
-        request = cherrypy.request
-        conf = self._merged_args()
-
-        if "bindings" in conf:
-            self.bindings = conf["bindings"]
-        if "passable_exceptions" in conf:
-            self.passable_exceptions = conf["passable_exceptions"]
-
-        on_start_resource_priority = conf.pop("on_start_resource_priority", 10)
-        if on_start_resource_priority is None:
-            on_start_resource_priority = getattr(self.on_start_resource, "priority",
-                                                 self._priority)
-        request.hooks.attach(self._point, self.on_start_resource,
-                             priority=on_start_resource_priority)
-
-        before_finalize_priority = conf.pop("before_finalize_priority", None)
-        if before_finalize_priority is None:
-            before_finalize_priority = getattr(self.before_finalize, "priority",
-                                               self._priority)
-        request.hooks.attach("before_finalize", self.before_finalize,
-                             priority=before_finalize_priority)
-
-        after_error_response_priority = conf.pop("after_error_response_priority",
-                                                 None)
-        if after_error_response_priority is None:
-            after_error_response_priority = getattr(self.after_error_response,
-                                                    "priority", self._priority)
-        request.hooks.attach("after_error_response", self.after_error_response,
-                             priority=after_error_response_priority)
-
-    def on_start_resource(self):
-        if hasattr(self, "bindings"):
-
-            bindings = self.bindings
+    def on_start_resource(self, bindings=None):
+        if bindings:
 
             if len(bindings) > 1:
                 Session = scoped_session(sessionmaker(twophase=True))
