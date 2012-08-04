@@ -206,22 +206,37 @@ def from_mapping(mapping, instance, excludes=None, format=None):
     warnings.warn("from_mapping() is deprecated and will be removed in 0.6, please use from_collection() instead.")
     return from_collection(mapping, instance, excludes=excludes, format=format)
 
-# TODO: add validators support
+def _get_property_instance(session, mapping, prop):
+    prop_cls = prop.mapper.class_
+    prop_pk_vals = tuple((mapping[pk_col.key] for pk_col in prop.mapper.primary_key if pk_col.key in mapping))
+    if prop_pk_vals:
+        prop_inst = session.query(prop_cls).get(prop_pk_vals)
+    elif prop.mapper.polymorphic_on is not None:
+        prop_inst = prop.mapper.polymorphic_map[mapping[prop.mapper.get_property_by_column(prop.mapper.polymorphic_on).key]].class_()
+    else:
+        prop_inst = prop_cls()
+    return prop_inst
+
 def from_collection(from_, to_, excludes=None, format=None, collection_handling="replace"):
-    """Utility function to apply data in a Python collection to SQLAlchemy declarative models objects.
+    """Utility function to recursively apply data in a Python collection to SQLAlchemy declarative model objects.
     
-    This function takes a `mapping` and an `instance` and sets the attributes
-    on the SQLAlchemy declarative model instance using the key-value pairs from
-    the mapping **inplace**.
+    This function takes a `from_` and an `to_` and sets the attributes on the
+    SQLAlchemy declarative model instance using the key-value pairs from the
+    collection **inplace**.
     
-    If `excludes` is provided, which can be a string or a list of strings, the
-    attribute(s) in the mapping will *NOT* be set on the instance.
+    If `excludes` is provided, it works similarily as `to_collection`.
     
-    If `format` is the string `json`, the mapping returned will be a JSON string
-    , otherwise a mapping object will be returned.
+    If `format` is the string `json`, the mapping returned will be a JSON
+    string, otherwise the mapped model(s) will be returned.
     
-    If a key from the mapping is not found as a column on the instance, it will
-    simply be skipped and not set on the instance.
+    If `collection_handling` is `replace`, which is the default, all the
+    supplied relationship mappings will be converted to the correct subclass
+    instances and replace the entire relationship collection on the parent
+    objects. If the value is `append`, the mapped model instance will be
+    appended to the relationship collection instead.
+    
+    If a key from the mapping is not found as a column on a model instance, it
+    will simply be skipped and not set on the instance.
     
     The values supplied is converted according to the similiar rules as
     `to_collection()`:
@@ -276,8 +291,6 @@ def from_collection(from_, to_, excludes=None, format=None, collection_handling=
                         if not isinstance(from_val, list) and not isinstance(from_val, dict):
                             raise ValueError("%r must be either a list or a dict" % attr)
 
-                        prop_cls = prop.mapper.class_
-
                         if prop.uselist is None or prop.uselist:
 
                             if collection_handling == "replace":
@@ -290,27 +303,13 @@ def from_collection(from_, to_, excludes=None, format=None, collection_handling=
                             from_iterator = iter(from_val) if isinstance(from_val, list) else from_val.itervalues()
 
                             for v in from_iterator:
-                                prop_pk_vals = tuple((v[pk_col.key] for pk_col in prop.mapper.primary_key if pk_col.key in v))
-                                if prop_pk_vals and Session.object_session(to_):
-                                    prop_inst = Session.object_session(to_).query(prop_cls).get(prop_pk_vals)
-                                elif prop.mapper.polymorphic_on is not None:
-                                    prop_inst = prop.mapper.polymorphic_map[v[prop.mapper.get_property_by_column(prop.mapper.polymorphic_on).key]].class_()
-                                else:
-                                    prop_inst = prop_cls()
-
+                                prop_inst = _get_property_instance(Session.object_session(to_), v, prop)
                                 appender(from_collection(v, prop_inst, excludes=excludes))
                             
                             if collection_handling == "replace":
                                 setattr(to_, attr, col)
                         else:
-                            prop_pk_vals = tuple((from_val[pk_col.key] for pk_col in prop.mapper.primary_key if pk_col.key in from_val))
-                            if prop_pk_vals and Session.object_session(to_):
-                                prop_inst = Session.object_session(to_).query(prop_cls).get(prop_pk_vals)
-                            elif prop_cls.__mapper__.polymorphic_on:
-                                prop_inst = prop.mapper.polymorphic_map[from_val[prop.mapper.get_property_by_column(prop.mapper.polymorphic_on).key]].class_()
-                            else:
-                                prop_inst = prop_cls()
-
+                            prop_inst = _get_property_instance(Session.object_session(to_), from_val, prop)
                             setattr(to_, attr, from_collection(from_val, prop_inst, excludes=excludes))
                     else:
                         setattr(to_, attr, from_collection(from_val, None, excludes=excludes))
