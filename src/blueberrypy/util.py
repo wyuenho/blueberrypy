@@ -1,6 +1,7 @@
 import copy
 import hashlib
 import hmac
+import warnings
 
 from base64 import b64encode, urlsafe_b64encode
 
@@ -12,8 +13,7 @@ except ImportError:
 from datetime import date, time, datetime, timedelta
 
 from dateutil.parser import parse as parse_date
-
-from sqlalchemy.orm import RelationshipProperty
+from sqlalchemy.orm import RelationshipProperty, Session, collections
 
 try:
     from geoalchemy.base import SpatialElement, WKTSpatialElement
@@ -26,27 +26,64 @@ else:
     geos_support = True
 
 
-__all__ = ["to_mapping", "from_mapping", "CSRFToken",
+__all__ = ["to_collection", "to_mapping", "from_mapping", "CSRFToken",
            "pad_block_cipher_message", "unpad_block_cipher_message"]
 
 
-def to_mapping(value, includes=None, excludes=None, format=None, **json_kwargs):
-    """Utility function to convert a value to a mapping.
+def _get_model_properties(model, excludes):
+    props = {}
+    for prop in model.__mapper__.iterate_properties:
+        if isinstance(prop, RelationshipProperty):
+            props[prop.key] = prop
+            if prop.backref:
+                backref_prop_key = prop.backref[0]
+                for mapper in prop.mapper.polymorphic_iterator():
+                    excludes.setdefault(mapper.class_, set()).add(backref_prop_key)
+        else:
+            if prop.key.startswith("_"):
+                props[prop.columns[0].key] = prop
+            else:
+                props[prop.key] = prop
+    return props
+
+def _ensure_is_dict(key, inc_exc):
+
+    if inc_exc:
+        inc_exc = copy.deepcopy(inc_exc)
+
+        if isinstance(inc_exc, basestring):
+            inc_exc = {key: set([inc_exc])}
+        elif isinstance(inc_exc, (list, tuple, set, frozenset)):
+            inc_exc = {key: set(iter(inc_exc))}
+        elif not isinstance(inc_exc, dict):
+            raise TypeError(inc_exc, "Please provide a string, an iterable or a dict")
+
+        return inc_exc
+
+    return {}
+
+def to_mapping(value, includes=None, excludes=None, format=None, recursive=False, **json_kwargs):
+    warnings.warn("to_mapping() is deprecated and will be removed in 0.6, please use to_collection() instead.")
+    return to_collection(value, includes=includes, excludes=excludes, format=format,
+                         recursive=recursive, **json_kwargs)
+
+def to_collection(from_, includes=None, excludes=None, format=None, recursive=False, **json_kwargs):
+    """Utility function to convert complex values and SQLAlchemy declarative model objects to a Python collection.
     
-    This function has 2 modes:
-        - SQLAlchemy declarative model -> mapping
-        - complex value type (e.g. datetime types and GeoAlchemy SpatialElement) -> mapping
+    This function generally works very similar to `json.dump()`, with the
+    following enhancements:
     
     SQLAlchemy declarative model
     ----------------------------
-    If `value` is a SQLAlchemy declarative model value (identified by the
-    existance of an `__table__` attribute), `to_mapping()` will iterate through
-    all the value's column and put the column's name and its value into the
-    mapping object to be returned. In addition to basic Python data types, this
-    function will convert `datetime` values according to the following table:
+    If `from_` is a SQLAlchemy declarative model object (identified by the
+    existance of a `__mapper__` attribute), or a collection if it,
+    `to_collection()` will iterate through all the value's mapped properties
+    and put the mapped property's name and its value into the result object to
+    be returned. In addition to basic Python data types, this function will
+    convert `datetime` values according to the following table:
 
     ========== =========== =============
-    value type mapping key mapping value
+    value type result key  result value
     ========== =========== =============
     datetime   datetime    .isoformat()
     time       time        .isoformat()
@@ -54,97 +91,124 @@ def to_mapping(value, includes=None, excludes=None, format=None, **json_kwargs):
     timedelta  interval    .seconds
     ========== =========== =============
     
-    In additional to `datetime` values, GeoAlchemy `SpatialElement values are
-    also converted to `geojson <http://geojson.org/>`_ format using
+    Furthermore, GeoAlchemy `SpatialElement values are also converted to
+    `geojson <http://geojson.org/>`_ format using
     `Shapely <http://toblerity.github.com/shapely/>_`.
     
-    Under SQLalchemy mode, if `includes` is provided, additional attribute(s) in
-    the model value will be included in the returned mapping. `includes` can be
-    a string or a list of strings. If `excludes` is provided, which can also be
-    a string or a list of strings, the attribute(s) will be exclude from the
-    returned mapping.
+    If `includes` is provided, additional attribute(s) in the model value(s)
+    will be included in the returned result. `includes` can be a string, an
+    iterable of strings, or a mapping of classes to iterables of strings. This
+    is usually used for getting the values of the un-mapped properties from the
+    model instances.
     
-    **Note:** columns with names starting with '_' and attributes that are
-    containers (e.g. relationship attributes) will not be included in the
-    returned mapping by default unless specified by `includes`.
+    If `excludes` is provided, which can also be a string, an iterable of
+    strings, or a mapping of classes to iterables of strings, the attribute(s)
+    will be excluded from the returned result.
     
+    Internally, `to_collection()` will convert the provided `includes` and
+    `excludes` property sets to a mapping of the classes of the values to lists
+    of property key strings.
+    
+    **Note:** Mapped property names starting with '_' will never be included in the
+    returned result.
+
+    If `recursive` is True, `to_collection` will recursively traverse the entire
+    object graph of the values and return a result representing the entire
+    object tree. The backrefs of the relationship properties will be
+    automatically added to the `excludes` set to prevent running into an
+    infinite loop. If you set `recursive` to True, and also supply either an
+    `includes` or `excludes` property sets, it is encouraged that you provide
+    mappings for explicitness.
+
     Complex values
     --------------
-    If `value` is not a a SQLAlchemy declarative model, a shallow copy of it
-    will be made and processed according to the same logic as SQLAlchemy mode's
-    column values. Namely `datatime` values and GeoAlchemy SpatialElement values
-    will be converted to their mapping representations.
+    If `from_` is not a a SQLAlchemy declarative model, it must be a Python
+    collection and its elements are processed according to the same logic as
+    SQLAlchemy mode. If `from_` is a collection, this function will recursively
+    convert all elements if `recursive` is True. `includes` and `excludes` will
+    have no effect under this mode unless some decendent objects are SQLAlchemy
+    declarative model objects, in which case processing will be the same as
+    described above.
     
-    If `format` is the string `json`, the mapping returned will be a JSON string
-    , otherwise a mapping object will be returned.
+    **Note:** If `from_` is an instance of a dict its keys will be converted to
+    a string regardless. All iterables besides a dict is returned as a list.
+    
+    
+    If `format` is the string `json`, the result returned will be a JSON string
+    , otherwise a Python collection object will be returned.
     
     If any `json_kwargs` is provided, they will be passed through to the
     underlying simplejson JSONDecoder.
     
     Examples:
     ---------
-    >>> to_mapping(legco) #doctest: +SKIP
+    >>> to_collection(legco) #doctest: +SKIP
     {'name': 'Hong Kong Legislative Council Building', 'founded': {'date': '1912-01-15'}, 'location': {'type': 'Point', 'coordinates': (22.280909, 114.160349)}}
     
-    >>> to_mapping(legco, excludes=['founded', 'location']) #doctest: +SKIP
+    >>> to_collection(legco, excludes=['founded', 'location']) #doctest: +SKIP
     {'name': 'Hong Kong Legislative Council Building'}
     
-    >>> to_mapping(legco, excludes=['founded'], format='json') #doctest: +SKIP
+    >>> to_collection(legco, excludes='founded', format='json') #doctest: +SKIP
     '{"name": "Hong Kong Legislative Council Building", 'location': {'type': 'Point', 'coordinates': [22.280909, 114.160349]}}'
+    
+    >>> to_collection([legco, hkpark], recursive=True, included={Location: set(['founded'])}) #doctest: +SKIP
+    [{'name': 'Hong Kong Legislative Council Building', 'founded': {'date': '1912-01-15'}, 'location': {'type': 'Point', 'coordinates': (22.280909, 114.160349)}},
+    {'name': 'Hong Kong Park', 'founded': {'date': '1991-05-23'}, 'location': {'type': 'Point', 'coordinates': [22.2771398, 114.1613993]}}]
     """
+    if hasattr(from_, "__mapper__"):
 
-    if hasattr(value, "__table__"):
-        includes = set([includes] if isinstance(includes, basestring) else includes and list(includes) or [])
-        excludes = set([excludes] if isinstance(excludes, basestring) else excludes and list(excludes) or [])
-        attrs = set([prop.key for prop in value.__mapper__.iterate_properties if not isinstance(prop, RelationshipProperty)])
-        attrs = includes | attrs - excludes
+        includes = _ensure_is_dict(from_.__class__, includes)
+        excludes = _ensure_is_dict(from_.__class__, excludes)
 
-        mapping = {}
-        for k in attrs:
-            v = getattr(value, k)
-            if not k.startswith("_") and not isinstance(v, (tuple, list, set, frozenset, dict)):
-                if isinstance(v, datetime):
-                    v = {"datetime": v.isoformat()}
-                elif isinstance(v, time):
-                    v = {"time": v.isoformat()}
-                elif isinstance(v, date):
-                    v = {"date": v.isoformat()}
-                elif isinstance(v, timedelta):
-                    v = {"interval": v.seconds}
-                elif geos_support and isinstance(v, SpatialElement):
-                    if isinstance(v, WKTSpatialElement):
-                        v = asGeoJSON(wkt_decode(v.geom_wkt))
-                    else:
-                        v = asGeoJSON(wkb_decode(str(v.geom_wkb)))
-                mapping[k] = v
+        props = _get_model_properties(from_, excludes)
+        attrs = set(props.iterkeys())
+        if includes and from_.__class__ in includes:
+            attrs |= includes[from_.__class__]
+        if excludes and from_.__class__ in excludes:
+            attrs -= excludes[from_.__class__]
 
-        if format == "json":
-            return json.dumps(mapping, **json_kwargs)
-        return mapping
+        result = {}
+        for attr in attrs:
+            if not attr.startswith("_"):
+                val = getattr(from_, attr)
+                val = to_collection(val, includes=includes, excludes=excludes, recursive=recursive)
+                result[attr] = val
     else:
-        v = copy.copy(value)
-        if isinstance(v, datetime):
-            v = {"datetime": v.isoformat()}
-        elif isinstance(v, time):
-            v = {"time": v.isoformat()}
-        elif isinstance(v, date):
-            v = {"date": v.isoformat()}
-        elif isinstance(v, timedelta):
-            v = {"interval": v.seconds}
-        elif geos_support and isinstance(v, SpatialElement):
-            if isinstance(v, WKTSpatialElement):
-                v = asGeoJSON(wkt_decode(v.geom_wkt))
+        if isinstance(from_, datetime):
+            result = {"datetime": from_.isoformat()}
+        elif isinstance(from_, time):
+            result = {"time": from_.isoformat()}
+        elif isinstance(from_, date):
+            result = {"date": from_.isoformat()}
+        elif isinstance(from_, timedelta):
+            result = {"interval": from_.seconds}
+        elif geos_support and isinstance(from_, SpatialElement):
+            if isinstance(from_, WKTSpatialElement):
+                result = asGeoJSON(wkt_decode(from_.geom_wkt))
             else:
-                v = asGeoJSON(wkb_decode(str(v.geom_wkb)))
+                result = asGeoJSON(wkb_decode(str(from_.geom_wkb)))
+        elif isinstance(from_, dict):
+            result = {}
+            for k, v in from_.items():
+                result[unicode(k)] = to_collection(v, includes=includes, excludes=excludes, recursive=recursive)
+        elif hasattr(from_, "__iter__"): # iterable collections, not strings
+            result = [to_collection(v, includes=includes, excludes=excludes, recursive=recursive)
+                      for v in from_] if recursive else list(from_)
+        else:
+            result = from_
 
-        if format == "json":
-            return json.dumps(v, **json_kwargs)
-        return v
+    if format == "json":
+        return json.dumps(result, **json_kwargs)
+
+    return result
+
+def from_mapping(mapping, instance, excludes=None, format=None):
+    warnings.warn("from_mapping() is deprecated and will be removed in 0.6, please use from_collection() instead.")
+    return from_collection(mapping, instance, excludes=excludes, format=format)
 
 # TODO: add validators support
-def from_mapping(mapping, instance, excludes=None, format=None):
-    """Utility function to set the column values of a SQLAlchemy declarative
-    model instance via a mapping.
+def from_collection(from_, to_, excludes=None, format=None, collection_handling="replace"):
+    """Utility function to apply data in a Python collection to SQLAlchemy declarative models objects.
     
     This function takes a `mapping` and an `instance` and sets the attributes
     on the SQLAlchemy declarative model instance using the key-value pairs from
@@ -160,7 +224,7 @@ def from_mapping(mapping, instance, excludes=None, format=None):
     simply be skipped and not set on the instance.
     
     The values supplied is converted according to the similiar rules as
-    `to_mapping()`:
+    `to_collection()`:
     
     ============== ============================================
     column type    mapping value format
@@ -169,52 +233,106 @@ def from_mapping(mapping, instance, excludes=None, format=None):
     time           {"time": "ISO-8601"}
     date           {"date": "ISO-8601"}
     timedelta      {"interval": seconds}
-    SpatialElement {"type": "Point", "coordinates": [lat, lng]}
+    SpatialElement GeoJSON
     ============== ============================================
     
     **Security Notice:** This function currently does not yet have integration 
     support for data validation. If you are using this function to directly 
     mass-assign user supplied data to your model instances, make sure you have 
     validated the data first. In a future version of blueberrypy, integration 
-    with a form validation library will be provided to ease this process.
-    
-    **Note:** If you supply collections values, the entire collection on the
-    entity is replaced instead of merging.
+    with a form validation library will be provided to ease this process. 
     """
-
     if format == "json":
-        mapping = json.loads(mapping)
+        from_ = json.loads(from_)
 
-    if not isinstance(mapping, dict):
-        raise TypeError(mapping, "mapping must be a dict")
+    if not isinstance(from_, dict):
+        if hasattr(from_, "__iter__"):
+            if not hasattr(to_, "__iter__"):
+                raise TypeError("to_ must be an iterable if from_ is an iterable.")
+            elif len(from_) != len(to_):
+                raise ValueError("length of to_ must match length of from_.")
 
-    excludes = set([excludes] if isinstance(excludes, basestring) else excludes and list(excludes) or [])
-    attrs = set([prop.key for prop in instance.__mapper__.iterate_properties])
-    attrs = attrs - excludes
+    if collection_handling != "replace" and collection_handling != "append":
+        raise ValueError("collection_handling must be 'replace' or 'append'.")
 
-    for k, v in mapping.iteritems():
+    excludes = _ensure_is_dict(to_.__class__, excludes)
 
-        if k in attrs:
-            if isinstance(v, dict):
-                if "date" in v:
-                    v = parse_date(v["date"]).date()
-                    setattr(instance, k, v)
-                elif "time" in v:
-                    v = parse_date(v["time"]).time()
-                    setattr(instance, k, v)
-                elif "datetime" in v:
-                    v = parse_date(v["datetime"])
-                    setattr(instance, k, v)
-                elif "interval" in v:
-                    v = timedelta(seconds=v["interval"])
-                    setattr(instance, k, v)
-                elif geos_support and "type" in v:
-                    v = asShape(v)
-                    setattr(instance, k, WKTSpatialElement(v.wkt))
-            else:
-                setattr(instance, k, v)
+    if isinstance(from_, dict):
+        if isinstance(to_, dict):
+            for k in to_.iterkeys():
+                if k in from_:
+                    to_[k] = from_collection(from_[k], to_[k], excludes=excludes)
+        elif hasattr(to_, "__mapper__"):
+            props = _get_model_properties(to_, excludes)
+            attrs = set(props.iterkeys())
+            if excludes and to_.__class__ in excludes:
+                attrs -= excludes[to_.__class__]
 
-    return instance
+            for attr in attrs:
+                if attr in from_:
+                    prop = props[attr]
+                    from_val = from_[attr]
+                    if isinstance(prop, RelationshipProperty):
+                        if not isinstance(from_val, list) and not isinstance(from_val, dict):
+                            raise ValueError("%r must be either a list or a dict" % attr)
+
+                        prop_cls = prop.mapper.class_
+
+                        if prop.uselist is None or prop.uselist:
+
+                            if collection_handling == "replace":
+                                col = collections.prepare_instrumentation(prop.collection_class or list)()
+                            elif collection_handling == "append":
+                                col = getattr(to_, attr)
+
+                            appender = col._sa_appender
+
+                            from_iterator = iter(from_val) if isinstance(from_val, list) else from_val.itervalues()
+
+                            for v in from_iterator:
+                                prop_pk_vals = tuple((v[pk_col.key] for pk_col in prop.mapper.primary_key if pk_col.key in v))
+                                if prop_pk_vals and Session.object_session(to_):
+                                    prop_inst = Session.object_session(to_).query(prop_cls).get(prop_pk_vals)
+                                elif prop.mapper.polymorphic_on is not None:
+                                    prop_inst = prop.mapper.polymorphic_map[v[prop.mapper.get_property_by_column(prop.mapper.polymorphic_on).key]].class_()
+                                else:
+                                    prop_inst = prop_cls()
+
+                                appender(from_collection(v, prop_inst, excludes=excludes))
+                            
+                            if collection_handling == "replace":
+                                setattr(to_, attr, col)
+                        else:
+                            prop_pk_vals = tuple((from_val[pk_col.key] for pk_col in prop.mapper.primary_key if pk_col.key in from_val))
+                            if prop_pk_vals and Session.object_session(to_):
+                                prop_inst = Session.object_session(to_).query(prop_cls).get(prop_pk_vals)
+                            elif prop_cls.__mapper__.polymorphic_on:
+                                prop_inst = prop.mapper.polymorphic_map[from_val[prop.mapper.get_property_by_column(prop.mapper.polymorphic_on).key]].class_()
+                            else:
+                                prop_inst = prop_cls()
+
+                            setattr(to_, attr, from_collection(from_val, prop_inst, excludes=excludes))
+                    else:
+                        setattr(to_, attr, from_collection(from_val, None, excludes=excludes))
+        else:
+            if "date" in from_:
+                to_ = parse_date(from_["date"]).date()
+            elif "time" in from_:
+                to_ = parse_date(from_["time"]).time()
+            elif "datetime" in from_:
+                to_ = parse_date(from_["datetime"])
+            elif "interval" in from_:
+                to_ = timedelta(seconds=from_["interval"])
+            elif geos_support and "type" in from_:
+                to_ = WKTSpatialElement(asShape(from_).wkt)
+
+    elif hasattr(from_, "__iter__") and hasattr(to_, "__iter__"):
+        to_ = [from_collection(f, t, excludes=excludes) for f, t in zip(from_, to_)]
+
+    else:
+        to_ = from_
+
+    return to_
 
 
 class CSRFToken(object):
