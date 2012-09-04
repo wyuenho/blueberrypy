@@ -13,7 +13,13 @@ except ImportError:
 from datetime import date, time, datetime, timedelta
 
 from dateutil.parser import parse as parse_date
-from sqlalchemy.orm import RelationshipProperty, Session, collections
+
+try:
+    from sqlalchemy.orm import RelationshipProperty, Session, collections
+except ImportError:
+    sqlalchemy_support = False
+else:
+    sqlalchemy_support = True
 
 try:
     from geoalchemy.base import SpatialElement, WKTSpatialElement
@@ -33,7 +39,7 @@ __all__ = ["to_collection", "to_mapping", "from_mapping", "CSRFToken",
 def _get_model_properties(model, excludes):
     props = {}
     for prop in model.__mapper__.iterate_properties:
-        if isinstance(prop, RelationshipProperty):
+        if sqlalchemy_support and isinstance(prop, RelationshipProperty):
             props[prop.key] = prop
             if prop.backref:
                 backref_prop_key = prop.backref[0]
@@ -287,7 +293,7 @@ def from_collection(from_, to_, excludes=None, format=None, collection_handling=
                 if attr in from_:
                     prop = props[attr]
                     from_val = from_[attr]
-                    if isinstance(prop, RelationshipProperty):
+                    if sqlalchemy_support and isinstance(prop, RelationshipProperty):
                         if not isinstance(from_val, list) and not isinstance(from_val, dict):
                             raise ValueError("%r must be either a list or a dict" % attr)
 
