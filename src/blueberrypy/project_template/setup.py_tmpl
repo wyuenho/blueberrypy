@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-install_requires = [{% if use_sqlalchemy -%}'SQLAlchemy'{% endif %}{% if use_redis -%}, 'redis'{% endif %}{% if use_webassets -%}, 'yuicompressor', 'webassets'{% endif %}{% if use_rest_controller -%}, 'Routes'{% endif %}{% if driver -%}, '{{driver}}'{% endif %}]
+install_requires = [{% if use_sqlalchemy -%}'SQLAlchemy', {% endif %}{% if use_redis -%}'redis', {% endif %}{% if use_webassets -%}'yuicompressor', 'webassets', {% endif %}{% if use_rest_controller -%}'Routes', {% endif %}{% if driver -%}'{{driver}}'{% endif %}]
 
 setup(name='{{package}}',
       version='{{version}}',
