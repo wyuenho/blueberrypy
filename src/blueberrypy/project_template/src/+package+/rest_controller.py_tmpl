@@ -10,9 +10,9 @@ import cherrypy
 
 from cherrypy import HTTPError
 from cherrypy.lib import httputil as cphttputil
-from blueberrypy.util import from_mapping, to_mapping
+{% if use_sqlalchemy -%}
+from blueberrypy.util import from_collection, to_collection
 
-{%- if use_sqlalchemy %}
 from {{package}} import api
 from {{package}}.model import User
 {%- endif %}
@@ -27,10 +27,10 @@ class UserController(object):
         {%- if use_sqlalchemy %}
         req = cherrypy.request
         orm_session = req.orm_session
-        user = from_mapping(req.json, User())
+        user = from_collection(req.json, User())
         orm_session.add(user)
         orm_session.commit()
-        return to_mapping(user, includes="age", excludes=("password", "salt"),
+        return to_collection(user, includes="age", excludes=("password", "salt"),
                           sort_keys=True)
         {%- else %}
         return {}
@@ -42,7 +42,7 @@ class UserController(object):
         id = int(id)
         user = api.find_user_by_id(cherrypy.request.orm_session, id)
         if user:
-            return to_mapping(user, includes="age", excludes=("password", "salt"),
+            return to_collection(user, includes="age", excludes=("password", "salt"),
                               sort_keys=True)
         raise HTTPError(404)
         {%- else %}
@@ -57,9 +57,9 @@ class UserController(object):
         orm_session = req.orm_session
         user = api.find_user_by_id(orm_session, id)
         if user:
-            user = from_mapping(req.json, user)
+            user = from_collection(req.json, user)
             orm_session.commit()
-            return to_mapping(user, includes="age", excludes=("password", "salt"),
+            return to_collection(user, includes="age", excludes=("password", "salt"),
                               sort_keys=True)
         raise HTTPError(404)
         {%- else %}
