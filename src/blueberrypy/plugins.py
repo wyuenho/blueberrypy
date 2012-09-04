@@ -1,6 +1,5 @@
 import logging
-
-from sqlalchemy.engine import engine_from_config
+import textwrap
 
 try:
     from logging.config import dictConfig
@@ -104,21 +103,31 @@ class SQLAlchemyPlugin(SimplePlugin):
         :py:func: sqlalchemy.engine_from_config
         """
 
-        if self.prefix in self.config:
-            section = self.config[self.prefix]
-            self.engine = engine_from_config(section, '')
-            self.bus.log("SQLAlchemy engine configured")
+        try:
+            from sqlalchemy.engine import engine_from_config
+        except ImportError, e:
+            self.bus.log(textwrap.dedent("""SQLAlchemy not installed.
+
+            Please use install it first before proceding:
+
+            $ pip install sqlalchemy
+            """))
         else:
-            engine_bindings = {}
+            if self.prefix in self.config:
+                section = self.config[self.prefix]
+                self.engine = engine_from_config(section, '')
+                self.bus.log("SQLAlchemy engine configured")
+            else:
+                engine_bindings = {}
 
-            for section_name, section in self.config.iteritems():
-                if section_name.startswith(self.prefix):
-                    model_fqn = section_name[len(self.prefix) + 1:]
-                    model_fqn_parts = model_fqn.rsplit('.', 1)
-                    model_mod = __import__(model_fqn_parts[0], globals(), locals(), [model_fqn_parts[1]])
-                    model = getattr(model_mod, model_fqn_parts[1])
-                    engine_bindings[model] = engine_from_config(section, '')
+                for section_name, section in self.config.iteritems():
+                    if section_name.startswith(self.prefix):
+                        model_fqn = section_name[len(self.prefix) + 1:]
+                        model_fqn_parts = model_fqn.rsplit('.', 1)
+                        model_mod = __import__(model_fqn_parts[0], globals(), locals(), [model_fqn_parts[1]])
+                        model = getattr(model_mod, model_fqn_parts[1])
+                        engine_bindings[model] = engine_from_config(section, '')
 
-            self.engine_bindings = engine_bindings
+                self.engine_bindings = engine_bindings
 
-            self.bus.log("SQLAlchemy engines configured")
+                self.bus.log("SQLAlchemy engines configured")
