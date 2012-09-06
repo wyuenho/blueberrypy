@@ -208,6 +208,21 @@ class CollectionUtilTest(unittest.TestCase):
                'derivedprop': 2,
                'datetime': {'datetime': '2012-01-01T00:00:00'},
                'geo': {'type': 'Point',
+                       'coordinates': (45.0, 45.0)}}
+
+        session = Session()
+        te = session.query(TestEntity).get(1)
+        result = to_collection(te)
+        self.assertEqual(doc, result)
+
+        doc = {'date': {'date': '2012-01-01'},
+               'time': {'time': '00:00:00'},
+               'interval': {'interval': 3600},
+               'id': 1,
+               'discriminator': 'derived',
+               'derivedprop': 2,
+               'datetime': {'datetime': '2012-01-01T00:00:00'},
+               'geo': {'type': 'Point',
                        'coordinates': (45.0, 45.0)},
                'related': [{'id': 1,
                             'discriminator': 'related',
@@ -219,10 +234,8 @@ class CollectionUtilTest(unittest.TestCase):
                             'parent_id': 1,
                             'subclass_prop': u'sub1'}]}
 
-        session = Session()
         te = session.query(TestEntity).get(1)
         result = to_collection(te, recursive=True)
-
         self.assertEqual(doc, result)
 
         serialized_doc = '{"date": {"date": "2012-01-01"}, "datetime": {"datetime": "2012-01-01T00:00:00"}, "derivedprop": 2, "discriminator": "derived", "geo": {"coordinates": [45.0, 45.0], "type": "Point"}, "id": 1, "interval": {"interval": 3600}, "related": [{"discriminator": "related", "id": 1, "key": "related1", "parent_id": 1}, {"discriminator": "relatedsubclass", "id": 2, "key": "related2", "parent_id": 1, "subclass_prop": "sub1"}], "time": {"time": "00:00:00"}}'
