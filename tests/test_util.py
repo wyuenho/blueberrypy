@@ -170,7 +170,7 @@ class CollectionUtilTest(unittest.TestCase):
                          time=time(1, 1, 1),
                          datetime=datetime(2013, 2, 2, 1, 1, 1),
                          interval=timedelta(seconds=3601),
-                         geo=WKTSpatialElement("POINT(46.0 45.1)"))
+                         geo=WKTSpatialElement("POINT(46.0 44.0)"))
 
         session = Session()
         session.add(te2)
@@ -253,7 +253,7 @@ class CollectionUtilTest(unittest.TestCase):
                                excludes={DerivedTestEntity: set(['id', 'interval', 'derivedprop'])},
                                format="json", sort_keys=True)
 
-        serialized_doc = '[{"combined": {"datetime": "2012-01-01T00:00:00"}, "date": {"date": "2012-01-01"}, "datetime": {"datetime": "2012-01-01T00:00:00"}, "discriminator": "derived", "geo": {"coordinates": [45.0, 45.0], "type": "Point"}, "related": [{"discriminator": "related", "id": 1, "key": "related1", "parent_id": 1}, {"discriminator": "relatedsubclass", "id": 2, "key": "related2", "parent_id": 1, "subclass_prop": "sub1"}], "time": {"time": "00:00:00"}}, {"combined": {"datetime": "2013-02-02T01:01:01"}, "date": {"date": "2013-02-02"}, "datetime": {"datetime": "2013-02-02T01:01:01"}, "discriminator": "derived", "geo": {"coordinates": [46.0, 45.1], "type": "Point"}, "related": [{"discriminator": "related", "id": 3, "key": "related3", "parent_id": 2}, {"discriminator": "related", "id": 4, "key": "related4", "parent_id": 2}], "time": {"time": "01:01:01"}}]'
+        serialized_doc = '[{"combined": {"datetime": "2012-01-01T00:00:00"}, "date": {"date": "2012-01-01"}, "datetime": {"datetime": "2012-01-01T00:00:00"}, "discriminator": "derived", "geo": {"coordinates": [45.0, 45.0], "type": "Point"}, "related": [{"discriminator": "related", "id": 1, "key": "related1", "parent_id": 1}, {"discriminator": "relatedsubclass", "id": 2, "key": "related2", "parent_id": 1, "subclass_prop": "sub1"}], "time": {"time": "00:00:00"}}, {"date": {"date": "2013-02-02"}, "datetime": {"datetime": "2013-02-02T01:01:01"}, "discriminator": "base", "geo": {"coordinates": [46.0, 44.0], "type": "Point"}, "id": 2, "interval": {"interval": 3601}, "related": [{"discriminator": "related", "id": 3, "key": "related3", "parent_id": 2}, {"discriminator": "related", "id": 4, "key": "related4", "parent_id": 2}], "time": {"time": "01:01:01"}}]'
         self.assertEqual(serialized_doc, result)
 
     @orm_session
@@ -276,7 +276,7 @@ class CollectionUtilTest(unittest.TestCase):
                'geo': {'type': 'Point', 'coordinates': (45.0, 45.0)},
                'related': [{'key': u'key1', 'parent_id': 1, 'discriminator': 'related'},
                            {'key': u'key2', 'parent_id': 1, 'discriminator': 'relatedsubclass', 'subclass_prop': 'sub'}]}
-        
+
         te = DerivedTestEntity()
         te = from_collection(doc, te)
         self.assertEqual(te.date, date(2012, 1, 1))
@@ -320,7 +320,7 @@ class CollectionUtilTest(unittest.TestCase):
         self.assertEqual(te.related[0].discriminator, u"related")
         self.assertEqual(len(te.related), 1)
         self.assertIsNotNone(Session.object_session(te.related[0]))
-        
+
         doc = {'related': [{'key': u'hello', 'parent_id': 1, 'discriminator': u'related'}]}
         te = from_collection(doc, te, collection_handling="append")
         self.assertEqual(len(te.related), 2)
