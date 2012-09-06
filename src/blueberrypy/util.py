@@ -37,15 +37,16 @@ __all__ = ["to_collection", "to_mapping", "from_mapping", "CSRFToken",
            "pad_block_cipher_message", "unpad_block_cipher_message"]
 
 
-def _get_model_properties(model, excludes):
+def _get_model_properties(model, excludes, recursive=False):
     props = {}
     for prop in model.__mapper__.iterate_properties:
         if isinstance(prop, RelationshipProperty):
-            props[prop.key] = prop
-            if prop.backref:
-                backref_prop_key = prop.backref[0]
-                for mapper in prop.mapper.polymorphic_iterator():
-                    excludes.setdefault(mapper.class_, set()).add(backref_prop_key)
+            if recursive:
+                props[prop.key] = prop
+                if prop.backref:
+                    backref_prop_key = prop.backref[0]
+                    for mapper in prop.mapper.polymorphic_iterator():
+                        excludes.setdefault(mapper.class_, set()).add(backref_prop_key)
         else:
             if prop.key.startswith("_"):
                 props[prop.columns[0].key] = prop
@@ -175,7 +176,7 @@ def to_collection(from_, includes=None, excludes=None, format=None, recursive=Fa
         includes = _ensure_is_dict(from_.__class__, includes)
         excludes = _ensure_is_dict(from_.__class__, excludes)
 
-        props = _get_model_properties(from_, excludes)
+        props = _get_model_properties(from_, excludes, recursive=recursive)
         attrs = set(props.iterkeys())
         if includes and from_.__class__ in includes:
             attrs |= includes[from_.__class__]
