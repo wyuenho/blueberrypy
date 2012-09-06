@@ -303,7 +303,7 @@ def from_collection(from_, to_, excludes=None, format=None, collection_handling=
                 $ pip install sqlalchemy
                 """))
 
-            props = _get_model_properties(to_, excludes)
+            props = _get_model_properties(to_, excludes, recursive=True)
             attrs = set(props.iterkeys())
             if excludes and to_.__class__ in excludes:
                 attrs -= excludes[to_.__class__]
