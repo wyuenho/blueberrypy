@@ -1,6 +1,7 @@
 import copy
 import hashlib
 import hmac
+import textwrap
 import warnings
 
 from base64 import b64encode, urlsafe_b64encode
@@ -39,7 +40,7 @@ __all__ = ["to_collection", "to_mapping", "from_mapping", "CSRFToken",
 def _get_model_properties(model, excludes):
     props = {}
     for prop in model.__mapper__.iterate_properties:
-        if sqlalchemy_support and isinstance(prop, RelationshipProperty):
+        if isinstance(prop, RelationshipProperty):
             props[prop.key] = prop
             if prop.backref:
                 backref_prop_key = prop.backref[0]
@@ -163,6 +164,14 @@ def to_collection(from_, includes=None, excludes=None, format=None, recursive=Fa
     """
     if hasattr(from_, "__mapper__"):
 
+        if not sqlalchemy_support:
+            raise ImportError(textwrap.dedent("""SQLAlchemy not installed.
+
+            Please use install it first before proceding:
+
+            $ pip install sqlalchemy
+            """))
+
         includes = _ensure_is_dict(from_.__class__, includes)
         excludes = _ensure_is_dict(from_.__class__, excludes)
 
@@ -284,6 +293,15 @@ def from_collection(from_, to_, excludes=None, format=None, collection_handling=
                 if k in from_:
                     to_[k] = from_collection(from_[k], to_[k], excludes=excludes)
         elif hasattr(to_, "__mapper__"):
+
+            if not sqlalchemy_support:
+                raise ImportError(textwrap.dedent("""SQLAlchemy not installed.
+    
+                Please use install it first before proceding:
+    
+                $ pip install sqlalchemy
+                """))
+
             props = _get_model_properties(to_, excludes)
             attrs = set(props.iterkeys())
             if excludes and to_.__class__ in excludes:
@@ -293,7 +311,7 @@ def from_collection(from_, to_, excludes=None, format=None, collection_handling=
                 if attr in from_:
                     prop = props[attr]
                     from_val = from_[attr]
-                    if sqlalchemy_support and isinstance(prop, RelationshipProperty):
+                    if isinstance(prop, RelationshipProperty):
                         if not isinstance(from_val, list) and not isinstance(from_val, dict):
                             raise ValueError("%r must be either a list or a dict" % attr)
 
@@ -311,7 +329,7 @@ def from_collection(from_, to_, excludes=None, format=None, collection_handling=
                             for v in from_iterator:
                                 prop_inst = _get_property_instance(Session.object_session(to_), v, prop)
                                 appender(from_collection(v, prop_inst, excludes=excludes))
-                            
+
                             if collection_handling == "replace":
                                 setattr(to_, attr, col)
                         else:
