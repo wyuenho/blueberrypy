@@ -27,7 +27,7 @@ readme = readme_file.read()
 readme_file.close()
 
 setup(name='blueberrypy',
-      version='0.5.4',
+      version='0.5.5',
       author='Jimmy Yuen Ho Wong',
       author_email='wyuenho@gmail.com',
       url='http://bitbucket.org/wyuenho/blueberrypy',
