@@ -2,7 +2,6 @@ import difflib
 import inspect
 import logging
 import os.path
-import textwrap
 import warnings
 import collections
 
