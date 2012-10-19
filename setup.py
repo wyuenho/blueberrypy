@@ -7,8 +7,7 @@ from setuptools import setup, find_packages
 install_requires = ['CherryPy>=3.2.2',
                     'Jinja2>=2.6',
                     'PyYAML>=3.10',
-                    'python-dateutil<2.0',
-                    'simplejson>=2.4.0']
+                    'python-dateutil<2.0']
 
 dev_requires = ['Sphinx>=1.1.3',
                 'nose>=1.1.2',
@@ -56,7 +55,8 @@ setup(name='blueberrypy',
       install_requires=install_requires,
       extras_require={'speedups': ['cdecimal>=2.3',
                                    'MarkupSafe>=0.15',
-                                   'hiredis>=0.1.0'],
+                                   'hiredis>=0.1.0',
+                                   'simplejson>=2.4.0'],
                       'all': ['SQLAlchemy>=0.7.6',
                               'redis>=2.4.11',
                               'webassets>=0.6',
