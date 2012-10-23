@@ -196,6 +196,7 @@
 
 <ul class="quick-links">
     <li><strong>Quick links</strong></li>
+    {% if theme_github_repo and theme_github_user %}
     <li>
         <a href="https://github.com/{{ theme_github_user }}/{{ theme_github_repo }}/">GitHub</a>
     </li>
@@ -217,6 +218,22 @@
     </li>
 
     <li class="divider">&middot;</li>
+    {% endif %}
+    {% if theme_bitbucket_repo and theme_bitbucket_user %}
+    <li>
+        <a href="https://bitbucket.org/{{ theme_bitbucket_user }}/{{ theme_bitbucket_repo }}/">BitBucket</a>
+    </li>
+    <li>
+        <a href="https://bitbucket.org/{{ theme_bitbucket_user }}/{{ theme_bitbucket_repo }}/issues?status=new&status=open">Issues</a>
+    </li>
+    <li>
+        <a class="bitbucket btn btn-mini follow" href="http://bitbucket.org/wyuenho/follow" target="_blank" data-type="follow"><b>Follow on BitBucket<b></a>
+    </li>
+    <li>
+        <a class="bitbucket btn btn-mini fork" href="http://bitbucket.org/wyuenho/blueberrypy/fork" target="_blank" data-type="fork"><b>Fork</b></a>
+    </li>
+    <li class="divider">&middot;</li>
+    {% endif %}
     <li class="follow-btn">
         <a href="https://twitter.com/{{ theme_twitter_username }}"
            class="twitter-follow-button" data-width="145px"
