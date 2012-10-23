@@ -2,7 +2,7 @@ BlueberryPy
 ===========
 Same as CherryPy, just with a different filling.
 
-
+Read the lastest documents at `<http://blueberrypy.readthedocs.org/>`_.
 
 What is it?
 -----------
@@ -122,14 +122,3 @@ Type `http://localhost:8080` into your browser's location bar and voila!
 
 Happy coding!
 
-TODO
-----
-
-#. write sphinx doc
-#. minimalist, conditional validators for json utils and form inputs
-#. babel integration
-#. request handler cache decorator
-#. search engine integration
-#. alembic or sqlalchemy-migrate integration
-#. modularize skeleton generation and commands
-#. better test coverage
