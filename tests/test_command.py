@@ -20,6 +20,8 @@ from ludibrio import Mock
 import blueberrypy
 from blueberrypy.command import main
 
+import datetime
+current_year = datetime.datetime.utcnow().year
 
 class CreateCommandTest(unittest.TestCase):
 
@@ -42,7 +44,7 @@ class CreateCommandTest(unittest.TestCase):
             raw_input("SQLAlchemy database connection URL: ") >> "sqlite://"
 
         config = {'author': 'author',
-                  'current_year': 2012,
+                  'current_year': current_year,
                   'driver': 'pysqlite',
                   'email': 'alice@example.com',
                   'package': 'testproject',
@@ -85,7 +87,7 @@ class CreateCommandTest(unittest.TestCase):
             raw_input("SQLAlchemy database connection URL: ") >> "sqlite://"
 
         config = {'author': 'author',
-                  'current_year': 2012,
+                  'current_year': current_year,
                   'driver': 'pysqlite',
                   'email': 'alice@example.com',
                   'package': 'testproject',
@@ -125,7 +127,7 @@ class CreateCommandTest(unittest.TestCase):
             raw_input("Use SQLAlchemy ORM? [Y/n] ") >> "n"
 
         config = {'author': 'author',
-                  'current_year': 2012,
+                  'current_year': current_year,
                   'email': 'alice@example.com',
                   'package': 'testproject',
                   'path': os.getcwdu(),
@@ -163,7 +165,7 @@ class CreateCommandTest(unittest.TestCase):
             raw_input("Use SQLAlchemy ORM? [Y/n] ") >> "No"
 
         config = {'author': 'author',
-                  'current_year': 2012,
+                  'current_year': current_year,
                   'email': 'alice@example.com',
                   'package': 'testproject',
                   'path': os.getcwdu(),
@@ -203,7 +205,7 @@ class CreateCommandTest(unittest.TestCase):
             raw_input("Use SQLAlchemy ORM? [Y/n] ") >> "No"
 
         config = {'author': 'author',
-                  'current_year': 2012,
+                  'current_year': current_year,
                   'email': 'alice@example.com',
                   'package': 'testproject',
                   'path': os.getcwdu(),
@@ -243,7 +245,7 @@ class CreateCommandTest(unittest.TestCase):
             raw_input("Use SQLAlchemy ORM? [Y/n] ") >> "No"
 
         config = {'author': 'author',
-                  'current_year': 2012,
+                  'current_year': current_year,
                   'email': 'alice@example.com',
                   'package': 'testproject',
                   'path': os.getcwdu(),
@@ -287,7 +289,7 @@ class CreateCommandTest(unittest.TestCase):
             raw_input("SQLAlchemy database connection URL: ") >> ""
 
         config = {'author': '',
-                  'current_year': 2012,
+                  'current_year': current_year,
                   'email': 'alice@example.com',
                   'package': 'valid_package_name',
                   'path': os.getcwdu(),
@@ -335,7 +337,7 @@ class CreateCommandTest(unittest.TestCase):
             raw_input("SQLAlchemy database connection URL: ") >> ""
 
         config = {'author': '',
-                  'current_year': 2012,
+                  'current_year': current_year,
                   'email': 'alice@example.com',
                   'package': 'valid_package_name',
                   'path': os.getcwdu(),
