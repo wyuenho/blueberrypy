@@ -7,7 +7,7 @@ from setuptools import setup, find_packages
 install_requires = ['CherryPy>=3.2.2',
                     'Jinja2>=2.6',
                     'PyYAML>=3.10',
-                    'python-dateutil<2.0']
+                    'python-dateutil>=2.2']
 
 dev_requires = ['Sphinx>=1.1.3',
                 'nose>=1.1.2',
@@ -15,7 +15,7 @@ dev_requires = ['Sphinx>=1.1.3',
                 'coverage>=3.5.1',
                 'lazr.smtptest>=1.3',
                 'ludibrio>=3.1.0',
-                'tox>=1.3']
+                'tox>=1.6']
 
 if sys.version_info[:2] < (2, 7):
     install_requires.append("argparse>=1.2.1")
@@ -57,7 +57,7 @@ setup(name='blueberrypy',
                                    'MarkupSafe>=0.15',
                                    'hiredis>=0.1.0',
                                    'simplejson>=2.4.0'],
-                      'all': ['SQLAlchemy>=0.7.6',
+                      'all': ['SQLAlchemy>=0.7.6,<0.9',
                               'redis>=2.4.11',
                               'webassets>=0.6',
                               'Routes>=1.12.3',
