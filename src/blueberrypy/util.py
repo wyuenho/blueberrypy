@@ -23,7 +23,7 @@ else:
     sqlalchemy_support = True
 
 try:
-    from geoalchemy.base import SpatialElement, WKTSpatialElement
+    from geoalchemy2.elements import WKTElement, WKBElement
     from shapely.geometry import asShape, mapping as asGeoJSON
     from shapely.wkb import loads as wkb_decode
     from shapely.wkt import loads as wkt_decode
@@ -99,9 +99,9 @@ def to_collection(from_, includes=None, excludes=None, format=None, recursive=Fa
     timedelta  interval    .seconds
     ========== =========== =============
     
-    Furthermore, GeoAlchemy `SpatialElement values are also converted to
-    `geojson <http://geojson.org/>`_ format using
-    `Shapely <http://toblerity.github.com/shapely/>_`.
+    Furthermore, GeoAlchemy2 `WKT/WKBElement values are also converted to
+    `geojson <http://geojson.org/>`_ format using `Shapely
+    <http://toblerity.github.com/shapely/>_`.
     
     If `includes` is provided, additional attribute(s) in the model value(s)
     will be included in the returned result. `includes` can be a string, an
@@ -162,6 +162,7 @@ def to_collection(from_, includes=None, excludes=None, format=None, recursive=Fa
     >>> to_collection([legco, hkpark], recursive=True, included={Location: set(['founded'])}) #doctest: +SKIP
     [{'name': 'Hong Kong Legislative Council Building', 'founded': {'date': '1912-01-15'}, 'location': {'type': 'Point', 'coordinates': (22.280909, 114.160349)}},
     {'name': 'Hong Kong Park', 'founded': {'date': '1991-05-23'}, 'location': {'type': 'Point', 'coordinates': [22.2771398, 114.1613993]}}]
+
     """
     if hasattr(from_, "__mapper__"):
 
@@ -198,10 +199,10 @@ def to_collection(from_, includes=None, excludes=None, format=None, recursive=Fa
             result = {"date": from_.isoformat()}
         elif isinstance(from_, timedelta):
             result = {"interval": from_.seconds}
-        elif geos_support and isinstance(from_, SpatialElement):
-            if isinstance(from_, WKTSpatialElement):
+        elif geos_support:
+            if isinstance(from_, WKTElement):
                 result = asGeoJSON(wkt_decode(from_.geom_wkt))
-            else:
+            elif isinstance(from_, WKBElement):
                 result = asGeoJSON(wkb_decode(str(from_.geom_wkb)))
         elif isinstance(from_, dict):
             result = {}
@@ -264,7 +265,7 @@ def from_collection(from_, to_, excludes=None, format=None, collection_handling=
     time           {"time": "ISO-8601"}
     date           {"date": "ISO-8601"}
     timedelta      {"interval": seconds}
-    SpatialElement GeoJSON
+    WKTElement     GeoJSON
     ============== ============================================
     
     **Security Notice:** This function currently does not yet have integration 
@@ -348,7 +349,7 @@ def from_collection(from_, to_, excludes=None, format=None, collection_handling=
             elif "interval" in from_:
                 to_ = timedelta(seconds=from_["interval"])
             elif geos_support and "type" in from_:
-                to_ = WKTSpatialElement(asShape(from_).wkt)
+                to_ = WKTElement(asShape(from_).wkt)
 
     elif hasattr(from_, "__iter__") and hasattr(to_, "__iter__"):
         to_ = [from_collection(f, t, excludes=excludes) for f, t in zip(from_, to_)]

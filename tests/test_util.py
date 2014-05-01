@@ -12,7 +12,7 @@ from datetime import date, time, datetime, timedelta
 
 import testconfig
 
-from geoalchemy import GeometryColumn, Point, WKTSpatialElement, GeometryDDL
+from geoalchemy2 import Geometry
 from sqlalchemy import Column, Integer, Date, DateTime, Time, Interval, Enum, \
     ForeignKey, UnicodeText, engine_from_config
 from sqlalchemy.orm import sessionmaker, scoped_session, relationship, backref
@@ -69,16 +69,13 @@ class TestEntity(Base):
     time = Column(Time)
     datetime = Column(DateTime)
     interval = Column(Interval)
-    geo = GeometryColumn(Point(2))
+    geo = Column(Geometry('POINT', srid=4326))
 
     @property
     def combined(self):
         return datetime.combine(self.date, self.time)
 
     related = relationship(RelatedEntity, backref=backref("parent"))
-
-
-GeometryDDL(TestEntity.__table__)
 
 
 class DerivedTestEntity(TestEntity):
@@ -156,7 +153,7 @@ class CollectionUtilTest(unittest.TestCase):
                                derivedprop=2,
                                datetime=datetime(2012, 1, 1, 0, 0, 0),
                                interval=timedelta(seconds=3600),
-                               geo=WKTSpatialElement("POINT(45.0 45.0)"))
+                               geo="POINT(45.0 45.0)")
         session = Session()
         session.add(te)
 
@@ -170,13 +167,13 @@ class CollectionUtilTest(unittest.TestCase):
                          time=time(1, 1, 1),
                          datetime=datetime(2013, 2, 2, 1, 1, 1),
                          interval=timedelta(seconds=3601),
-                         geo=WKTSpatialElement("POINT(46.0 44.0)"))
+                         geo="POINT(46.0 44.0)")
 
         session = Session()
         session.add(te2)
 
         te2.related = [RelatedEntity(key=u"related3"),
-                      RelatedEntity(key=u"related4")]
+                       RelatedEntity(key=u"related4")]
 
         session.commit()
     setUpClass = setup_class
