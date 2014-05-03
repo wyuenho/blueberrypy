@@ -409,8 +409,8 @@ class ServeCommandTest(unittest.TestCase):
             del cherrypy.engine.logging
         if blueberrypy.email._mailer is not None:
             blueberrypy.email._mailer = None
-        if hasattr(cherrypy.lib.sessions, "RedisSession"):
-            del cherrypy.lib.sessions.RedisSession
+        if hasattr(cherrypy.lib.tools.sessions, "RedisSession"):
+            del cherrypy.lib.tools.sessions.RedisSession
         if hasattr(cherrypy.tools, "orm_session"):
             del cherrypy.tools.orm_session
         if blueberrypy.template_engine.jinja2_env is not None:
@@ -478,7 +478,7 @@ class ServeCommandTest(unittest.TestCase):
         main()
         self.assertIsInstance(blueberrypy.email._mailer, blueberrypy.email.Mailer)
         self.assertTrue(not hasattr(cherrypy.engine, "logging"))
-        self.assertTrue(not hasattr(cherrypy.lib.sessions, "RedisSession"))
+        self.assertTrue(not hasattr(cherrypy.lib.tools.sessions, "RedisSession"))
         self.assertTrue(not hasattr(cherrypy.engine, "sqlalchemy"))
         self.assertTrue(not hasattr(cherrypy.tools, "orm_session"))
         self.assertIsNone(blueberrypy.template_engine.jinja2_env)
@@ -519,7 +519,7 @@ class ServeCommandTest(unittest.TestCase):
         main()
         self.assertIsNone(blueberrypy.email._mailer)
         self.assertIsInstance(cherrypy.engine.logging, blueberrypy.plugins.LoggingPlugin)
-        self.assertTrue(not hasattr(cherrypy.lib.sessions, "RedisSession"))
+        self.assertTrue(not hasattr(cherrypy.lib.tools.sessions, "RedisSession"))
         self.assertTrue(not hasattr(cherrypy.engine, "sqlalchemy"))
         self.assertTrue(not hasattr(cherrypy.tools, "orm_session"))
         self.assertIsNone(blueberrypy.template_engine.jinja2_env)
@@ -544,7 +544,7 @@ class ServeCommandTest(unittest.TestCase):
         main()
         self.assertIsNone(blueberrypy.email._mailer)
         self.assertTrue(not hasattr(cherrypy.engine, "logging"))
-        self.assertEqual(cherrypy.lib.sessions.RedisSession, blueberrypy.session.RedisSession)
+        self.assertEqual(cherrypy.lib.tools.sessions.RedisSession, blueberrypy.session.RedisSession)
         self.assertTrue(not hasattr(cherrypy.engine, "sqlalchemy"))
         self.assertTrue(not hasattr(cherrypy.tools, "orm_session"))
         self.assertIsNone(blueberrypy.template_engine.jinja2_env)
@@ -570,7 +570,7 @@ class ServeCommandTest(unittest.TestCase):
         main()
         self.assertIsNone(blueberrypy.email._mailer)
         self.assertTrue(not hasattr(cherrypy.engine, "logging"))
-        self.assertTrue(not hasattr(cherrypy.lib.sessions, "RedisSession"))
+        self.assertTrue(not hasattr(cherrypy.lib.tools.sessions, "RedisSession"))
         self.assertIsInstance(cherrypy.engine.sqlalchemy, blueberrypy.plugins.SQLAlchemyPlugin)
         self.assertIsInstance(cherrypy.tools.orm_session, blueberrypy.tools.SQLAlchemySessionTool)
         self.assertIsNone(blueberrypy.template_engine.jinja2_env)
@@ -596,7 +596,7 @@ class ServeCommandTest(unittest.TestCase):
         main()
         self.assertIsNone(blueberrypy.email._mailer)
         self.assertTrue(not hasattr(cherrypy.engine, "logging"))
-        self.assertTrue(not hasattr(cherrypy.lib.sessions, "RedisSession"))
+        self.assertTrue(not hasattr(cherrypy.lib.tools.sessions, "RedisSession"))
         self.assertTrue(not hasattr(cherrypy.engine, "sqlalchemy"))
         self.assertTrue(not hasattr(cherrypy.tools, "orm_session"))
         self.assertIsInstance(blueberrypy.template_engine.jinja2_env, jinja2.Environment)
@@ -631,7 +631,7 @@ class ServeCommandTest(unittest.TestCase):
         main()
         self.assertIsNone(blueberrypy.email._mailer)
         self.assertTrue(not hasattr(cherrypy.engine, "logging"))
-        self.assertTrue(not hasattr(cherrypy.lib.sessions, "RedisSession"))
+        self.assertTrue(not hasattr(cherrypy.lib.tools.sessions, "RedisSession"))
         self.assertTrue(not hasattr(cherrypy.engine, "sqlalchemy"))
         self.assertTrue(not hasattr(cherrypy.tools, "orm_session"))
         self.assertIsInstance(blueberrypy.template_engine.jinja2_env, jinja2.Environment)
@@ -694,7 +694,7 @@ class ServeCommandTest(unittest.TestCase):
         main()
         self.assertIsInstance(blueberrypy.email._mailer, blueberrypy.email.Mailer)
         self.assertIsInstance(cherrypy.engine.logging, blueberrypy.plugins.LoggingPlugin)
-        self.assertEqual(cherrypy.lib.sessions.RedisSession, blueberrypy.session.RedisSession)
+        self.assertEqual(cherrypy.lib.tools.sessions.RedisSession, blueberrypy.session.RedisSession)
         self.assertIsInstance(cherrypy.engine.sqlalchemy, blueberrypy.plugins.SQLAlchemyPlugin)
         self.assertIsInstance(cherrypy.tools.orm_session, blueberrypy.tools.SQLAlchemySessionTool)
         self.assertIsInstance(blueberrypy.template_engine.jinja2_env, jinja2.Environment)
@@ -785,7 +785,7 @@ class ServeCommandTest(unittest.TestCase):
         self._setup_basic_app_config()
 
         # hack to get around problem with not being able to acquire a port
-        # after listening on a different ip/port in a previous test 
+        # after listening on a different ip/port in a previous test
         old_cherrypy_engine_start = cherrypy.engine.start
         def dummy_start(self):
             pass

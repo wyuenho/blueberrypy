@@ -6,7 +6,7 @@ try:
 except ImportError:
     from logutils.dictconfig import dictConfig
 
-from cherrypy.process.plugins import SimplePlugin
+from magicbus.plugins import SimplePlugin
 
 
 __all__ = ['LoggingPlugin', 'SQLAlchemyPlugin']

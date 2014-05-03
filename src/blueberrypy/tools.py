@@ -2,7 +2,7 @@ import logging
 import warnings
 
 import cherrypy
-from cherrypy._cptools import Tool, _getargs
+from cherrypy.lib.tools import Tool, _getargs
 
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.exc import SQLAlchemyError

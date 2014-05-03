@@ -4,8 +4,7 @@ import sys
 from setuptools import setup, find_packages
 
 
-install_requires = ['CherryPy>=3.2.2',
-                    'Jinja2>=2.6',
+install_requires = ['Jinja2>=2.6',
                     'PyYAML>=3.10',
                     'python-dateutil>=2.2']
 

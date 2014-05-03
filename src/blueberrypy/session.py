@@ -5,7 +5,7 @@ import time
 
 from pprint import pformat
 
-from cherrypy.lib import sessions
+from cherrypy.lib.tools.sessions.base import Session
 from redis import StrictRedis as _RedisClient
 
 
@@ -25,7 +25,7 @@ def normalize_sep(prefix, sep=':'):
         return prefix.rstrip(':') + ':'
 
 
-class RedisSession(sessions.Session):
+class RedisSession(Session):
 
     locks = {}
 

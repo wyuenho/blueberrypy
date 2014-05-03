@@ -1,4 +1,6 @@
-CherryPy>=3.2.2
+hg+https://bitbucket.org/cherrypy/cherrypy@cp4
+hg+https://bitbucket.org/cherrypy/cheroot
+hg+ssh://hg@bitbucket.org/cherrypy/magicbus
 Jinja2>=2.6
 PyYAML>=3.10
 Routes>=1.12.3

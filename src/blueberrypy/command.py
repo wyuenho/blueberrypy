@@ -16,8 +16,8 @@ import textwrap
 from datetime import datetime
 
 import cherrypy
-from cherrypy.process import servers
-from cherrypy.process.plugins import Daemonizer, DropPrivileges, PIDFile
+from magicbus.plugins import servers
+from magicbus.plugins.opsys import Daemonizer, DropPrivileges, PIDFile
 
 import blueberrypy
 from blueberrypy.config import BlueberryPyConfiguration
@@ -134,7 +134,7 @@ def create(args, config_dir=None):
     footer = textwrap.dedent("""
     ===========================================================================
     Your project skeleton has been created under {path}.
- 
+
     Subsystems chosen
     -----------------
     Routes (RESTful controllers): {use_rest_controller}
@@ -142,19 +142,19 @@ def create(args, config_dir=None):
     webassets: {use_webassets}
     redis: {use_redis}
     SQLAlchemy: {use_sqlalchemy}
-    
+
     If you now install your package now the packages above will be automatically
     installed as well.
 
     e.g. $ pip install -e .
- 
+
     In unrestricted environments, you may also install 'MarkupSafe' and
     'cdecimal' to speed up Jinja2 and SQLAlchemy's queries on Decimal fields
     respectively. You may also install 'hiredis' if you have opted for the Redis
     session storage.
 
     e.g. $ pip install blueberrypy[speedups]
-    
+
     You should also install the appropriate database driver if you have decided
     to use BlueberryPy's SQLAlchemy support.
 
@@ -212,7 +212,7 @@ def serve(args, config_dir=None):
 
     if config.use_redis:
         from blueberrypy.session import RedisSession
-        cherrypy.lib.sessions.RedisSession = RedisSession
+        cherrypy.lib.tools.sessions.RedisSession = RedisSession
 
     if config.use_sqlalchemy:
         from blueberrypy.plugins import SQLAlchemyPlugin
@@ -340,7 +340,7 @@ def create_parser(config_dir=None):
 def bundle_parser(config_dir=None):
 
     description = textwrap.dedent("""Webassets bundle management.
-    
+
     Before you can use this command to bundle up your Web assets, you should
     have created either a project skeleton using the 'create' command or
     provided a configuration directory using the global option -c --config_dir.
@@ -407,12 +407,12 @@ def console_parser(config_dir=None):
 
 def main():
     description = textwrap.dedent("""BlueberryPy lightweight pluggable Web application framework command line interface.
-    
+
     Type 'blueberrypy -h' or 'blueberrypy --help' for general help.
     Type 'blueberrypy help <command>' for help on that specific command.
-    
+
     commands:
-    
+
     help                print this help or a command's if an argument is given
     create              create a project skeleton
     console             BlueberryPy REPL for experimentations
