@@ -39,19 +39,19 @@ class ControllerTestCase(CPWebCase):
         if config.use_jinja2:
             if config.webassets_env:
                 configure_jinja2(assets_env=config.webassets_env,
-                                        **config.jinja2_config)
+                                 **config.jinja2_config)
             else:
                 configure_jinja2(**config.jinja2_config)
 
         cherrypy.config.update(config.app_config)
 
         # mount the controllers
-        for script_name, section in config.controllers_config.iteritems():
+        for script_name, section in config.controllers_config.viewitems():
             section = section.copy()
             controller = section.pop("controller")
             if isinstance(controller, cherrypy.dispatch.RoutesDispatcher):
                 routes_config = {'/': {"request.dispatch": controller}}
-                for path in section.iterkeys():
+                for path in section.viewkeys():
                     if path.strip() == '/':
                         routes_config['/'].update(section['/'])
                     else:
@@ -68,4 +68,3 @@ class ControllerTestCase(CPWebCase):
                 controller_config.update(app_config)
                 cherrypy.tree.mount(controller(), script_name=script_name,
                                     config=controller_config)
-

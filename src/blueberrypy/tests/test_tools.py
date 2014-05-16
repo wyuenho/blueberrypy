@@ -1,7 +1,5 @@
+import sys
 import unittest
-
-if not hasattr(unittest.TestCase, "assertIn"):
-    import unittest2 as unittest
 
 try:
     import simplejson as json
@@ -9,7 +7,7 @@ except ImportError:
     import json
 
 import cherrypy
-from cherrypy import HTTPError, HTTPRedirect, InternalRedirect
+from cherrypy import HTTPError, HTTPRedirect
 from cherrypy.test import helper
 
 from sqlalchemy import Column, Integer, Unicode, engine_from_config
@@ -22,7 +20,7 @@ from blueberrypy.tools import MultiHookPointTool, SQLAlchemySessionTool
 
 
 def get_config(section_name):
-    return dict([(str(k), v) for k, v in testconfig[section_name].iteritems()])
+    return dict([(str(k), v) for k, v in list(testconfig[section_name].viewitems())])
 
 Base = declarative_base()
 
@@ -64,7 +62,7 @@ class MultiHookPointToolTest(helper.CPWebCase, unittest.TestCase):
 
             def on_end_resource(self, param=None):
                 resp = cherrypy.response
-                resp.header_list += ('x-on-end-resource', str(param)),
+                resp.header_list.append((b'x-on-end-resource', str(param).encode()))
 
             def before_error_response(self, param=None):
                 resp = cherrypy.response
@@ -84,7 +82,9 @@ class MultiHookPointToolTest(helper.CPWebCase, unittest.TestCase):
             @cherrypy.expose
             def success(self):
                 req = cherrypy.request
-                return str(req.on_start_resource_param | req.before_request_body_param | req.before_handler_param)
+                return str(req.on_start_resource_param +
+                           req.before_request_body_param +
+                           req.before_handler_param)
             success._cp_config = {"tools.test_multi_hook_point.on_start_resource.param": 1,
                                   "tools.test_multi_hook_point.before_request_body.param": 2,
                                   "tools.test_multi_hook_point.before_handler.param": 4,
@@ -104,14 +104,14 @@ class MultiHookPointToolTest(helper.CPWebCase, unittest.TestCase):
     def test_success(self):
         self.getPage("/success")
         self.assertInBody(str(7))
-        self.assertHeader("x-before-finalize", 11)
-        self.assertHeader("x-on-end-resource", 13)
+        self.assertHeader("x-before-finalize", str(11))
+        self.assertHeader("x-on-end-resource", str(13))
         self.assertEqual(MultiHookPointToolTest.on_end_request_param, 19)
 
     def test_failure(self):
         self.getPage("/failure")
-        self.assertHeader("x-before-error-response", 7)
-        self.assertHeader("x-after-error-response", 8)
+        self.assertHeader("x-before-error-response", str(7))
+        self.assertHeader("x-after-error-response", str(8))
 
 
 class SQLAlchemySessionToolSingleEngineTest(helper.CPWebCase, unittest.TestCase):
@@ -172,7 +172,7 @@ class SQLAlchemySessionToolSingleEngineTest(helper.CPWebCase, unittest.TestCase)
 
             def raise_not_passable_exception_query(self):
                 session = cherrypy.request.orm_session
-                bob = session.query(User).filter_by(name=u'bob').first()
+                session.query(User).filter_by(name=u'bob').first()
                 return json.dumps(None)
             raise_not_passable_exception_query.exposed = True
 

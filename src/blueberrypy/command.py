@@ -1,23 +1,41 @@
-from __future__ import print_function
+"""
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+BlueberryPy lightweight pluggable Web application framework command line interface
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-import sys
-try:
-    import cdecimal
-    sys.modules["decimal"] = cdecimal
-except:
-    pass
+usage: blueberrypy [options] [COMMAND ARGS...]
 
-import argparse
+options:
+    -h, --help                    show this help message and exit
+    --version                     print version information and exit
+    -C <dir>, --config-dir=<dir>  path to the configuration directory
+
+
+The list of possible commands are:
+    help     print this help or a command's if an argument is given
+    create   create a project skeleton
+    console  blueberrypy REPL for experimentations
+    bundle   bundles up web assets (type 'blueberrypy help bundle' for details)
+    serve    spawn a new CherryPy server process
+
+
+See 'blueberrypy help COMMAND' for more information on a specific command.
+
+"""
+
 import logging
 import os
+import sys
 import re
 import textwrap
 
 from datetime import datetime
+from functools import partial
 
 import cherrypy
-from magicbus.plugins import servers
-from magicbus.plugins.opsys import Daemonizer, DropPrivileges, PIDFile
+from docopt import docopt
+from cherrypy.process import servers
+from cherrypy.process.plugins import Daemonizer, DropPrivileges, PIDFile
 
 import blueberrypy
 from blueberrypy.config import BlueberryPyConfiguration
@@ -27,178 +45,226 @@ from blueberrypy.template_engine import configure_jinja2
 from blueberrypy.exc import BlueberryPyNotConfiguredError
 
 
-def create(args, config_dir=None):
+logger = logging.getLogger(__name__)
+
+
+def get_answer(prompt=None, type=str, default=None, matcher=None, required=False,
+               config=None):
+
+    if callable(default):
+        default = default(config)
+
+    if isinstance(required, basestring) and not config.get(required):
+        return '' if type == str else False
+
+    if type == bool and not matcher:
+        matcher = re.compile(r"^[YyNn]+.*$").match
+
+    while True:
+        user_input = raw_input(prompt(config) if callable(prompt) else prompt)
+        if not user_input and default is not None:
+            return default
+        if not user_input and not required:
+            return user_input
+        elif not user_input and required:
+            logger.error("A value is required.")
+            continue
+        elif user_input:
+            if matcher and not matcher(user_input):
+                if type == str:
+                    logger.error(
+                        "'{0}' does not match the required format.".format(user_input))
+                elif type == bool:
+                    logger.error("Please answer Y or N.")
+                continue
+            else:
+                if matcher:
+                    group = matcher(user_input).group(0)
+                    return group if type == str else group.lower().startswith('y')
+                return user_input
+
+
+def create(**kwargs):
+    """
+    Create a project skeleton.
+
+    usage: blueberrypy create [options]
+
+
+    options:
+      -h, --help            show this help message and exit
+      -p PATH, --path PATH  the path to create the project. default is the current
+                            directory
+      -d, --dry-run         do not write skeleton. prints out the content instead
+
+    """
 
     path = None
-    if args.path:
-        path = os.path.abspath(args.path)
+    if kwargs.get("path"):
+        path = os.path.abspath(kwargs.get("path"))
         if not os.path.exists(path):
             os.mkdir(path)
-            print("Path not found, a directory '%s' has been created." % path, file=sys.stderr)
+            logger.info("Path not found, a directory '%s' has been created." % path)
 
+    config = {}
+    config["path"] = path or os.getcwdu()
+    config["current_year"] = datetime.now().year
+
+    valid_package_name = re.compile(r"^[a-z_]+$")
     valid_version_re = re.compile(r"^\d+.\d+(.\d+)*(a|b|c|rc\d+(.\d+)?)?(.post\d+)?(.dev\d+)?$")
     valid_email_re = re.compile(r"^.+@.+$")
 
-    blueberrypy_config = {}
-    blueberrypy_config["path"] = path or os.getcwdu()
-    blueberrypy_config["current_year"] = datetime.now().year
+    questions = (
+        ("project_name", dict(prompt="Project name: ")),
 
-    blueberrypy_config["project_name"] = raw_input("Project name: ")
+        ("package", dict(prompt=lambda config: "Package name {project_name}: ".format(project_name=re.sub(r"\W+", '_', config.get("project_name").lower()) or "(PEP 8)"),
+                         default=lambda config: re.sub(r"\W+", '_', config.get("project_name").lower()) or None,
+                         required=True, matcher=valid_package_name.match)),
 
-    while True:
-        blueberrypy_config["package"] = package = raw_input("Package name: ")
-        if not package:
-            print("Package name cannot be empty.", file=sys.stderr)
-        else:
-            break
+        ("version", dict(prompt="Version (PEP 386): ", required=True,
+                         matcher=valid_version_re.match)),
 
-    while True:
-        blueberrypy_config["version"] = version = raw_input("Version (PEP 386): ")
-        if not valid_version_re.match(version):
-            print("'%s' does not match the required version format." % version, file=sys.stderr)
-        else:
-            break
+        ("author", dict(prompt="Author name: ")),
 
-    blueberrypy_config["author"] = raw_input("Author name: ")
+        ("email", dict(prompt="Email: ", matcher=valid_email_re.match)),
 
-    while True:
-        blueberrypy_config["email"] = email = raw_input("Email: ")
-        if not valid_email_re.match(email):
-            print("'%s' is an invalid email address." % email, file=sys.stderr)
-        else:
-            break
+        ("use_controller", dict(prompt="Use controllers backed by a templating engine? [Y/n] ",
+                                type=bool, default=True)),
 
-    while True:
-        use_controller = raw_input("Use controllers backed by a templating engine? [Y/n] ").lower()
-        if use_controller and (not use_controller.startswith('y') and not use_controller.startswith('n')):
-            print("Please answer Y or N.", file=sys.stderr)
-        else:
-            blueberrypy_config["use_controller"] = True if not use_controller or use_controller[0] == 'y' else False
-            break
+        ("use_rest_controller", dict(prompt="Use RESTful controllers? [y/N] ", type=bool,
+                                     default=False)),
 
-    while True:
-        use_rest_controller = raw_input("Use RESTful controllers? [y/N] ").lower()
-        if use_rest_controller and (not use_rest_controller.startswith('y') and not use_rest_controller.startswith('n')):
-            print("Please answer Y or N.", file=sys.stderr)
-        else:
-            blueberrypy_config["use_rest_controller"] = False if not use_rest_controller or use_rest_controller[0] == 'n' else True
-            break
+        ("use_jinja2", dict(prompt="Use Jinja2 templating engine? [Y/n] ", type=bool, default=True,
+                            required="use_controller")),
 
-    if blueberrypy_config["use_controller"]:
-        while True:
-            use_jinja2 = raw_input("Use Jinja2 templating engine? [Y/n] ").lower()
-            if use_jinja2 and (not use_jinja2.startswith('y') and not use_jinja2.startswith('n')):
-                print("Please answer Y or N.", file=sys.stderr)
-            else:
-                blueberrypy_config["use_jinja2"] = True if not use_jinja2 or use_jinja2[0] == 'y' else False
-                break
+        ("use_webassets", dict(prompt="Use webassets asset management framework? [Y/n] ", type=bool,
+                               default=True, required="use_controller")),
 
-        while True:
-            use_webassets = raw_input("Use webassets asset management framework? [Y/n] ").lower()
-            if use_webassets and (not use_webassets.startswith('y') and not use_webassets.startswith('n')):
-                print("Please answer Y or N.", file=sys.stderr)
-            else:
-                blueberrypy_config["use_webassets"] = True if not use_webassets or use_webassets[0] == 'y' else False
-                break
-    else:
-        blueberrypy_config["use_jinja2"] = False
-        blueberrypy_config["use_webassets"] = False
+        ("use_redis", dict(prompt="Use redis session? [y/N] ", type=bool, default=False)),
 
-    while True:
-        use_redis = raw_input("Use redis session? [y/N] ").lower()
-        if use_redis and (not use_redis.startswith('y') and not use_redis.startswith('n')):
-            print("Please answer Y or N.", file=sys.stderr)
-        else:
-            blueberrypy_config["use_redis"] = False if not use_redis or use_redis[0] == 'n' else True
-            break
+        ("use_sqlalchemy", dict(prompt="Use SQLAlchemy ORM? [Y/n] ", type=bool, default=True)),
 
-    while True:
-        use_sqlalchemy = raw_input("Use SQLAlchemy ORM? [Y/n] ").lower()
-        if use_sqlalchemy and (not use_sqlalchemy.startswith('y') and not use_sqlalchemy.startswith('n')):
-            print("Please answer Y or N.", file=sys.stderr)
-        else:
-            blueberrypy_config["use_sqlalchemy"] = True if not use_sqlalchemy or use_sqlalchemy[0] == 'y' else False
-            if blueberrypy_config["use_sqlalchemy"]:
-                blueberrypy_config["sqlalchemy_url"] = sqlalchemy_url = raw_input("SQLAlchemy database connection URL: ")
-                if sqlalchemy_url.strip():
-                    try:
-                        from sqlalchemy.engine import url as sa_url
-                        blueberrypy_config["driver"] = sa_url.make_url(sqlalchemy_url).get_dialect().driver
-                    except ImportError, e:
-                        pass
-                break
-            break
+        ("sqlalchemy_url", dict(prompt="SQLAlchemy database connection URL (sqlite://): ",
+                                default="sqlite://",
+                                required="use_sqlalchemy"))
+    )
 
-    create_project(blueberrypy_config, dry_run=args.dry_run)
+    for k, v in questions:
+        config[k(config) if callable(k) else k] = get_answer(config=config, **v)
+
+    create_project(config, dry_run=kwargs.get("dry_run"))
 
     footer = textwrap.dedent("""
     ===========================================================================
     Your project skeleton has been created under {path}.
 
+
     Subsystems chosen
     -----------------
+
     Routes (RESTful controllers): {use_rest_controller}
     Jinja2: {use_jinja2}
     webassets: {use_webassets}
     redis: {use_redis}
     SQLAlchemy: {use_sqlalchemy}
 
-    If you now install your package now the packages above will be automatically
-    installed as well.
 
-    e.g. $ pip install -e .
+    You can install your package for development with:
+
+      $ pip install -e .
 
     In unrestricted environments, you may also install 'MarkupSafe' and
-    'cdecimal' to speed up Jinja2 and SQLAlchemy's queries on Decimal fields
-    respectively. You may also install 'hiredis' if you have opted for the Redis
-    session storage.
+    'cdecimal' (only needed for py27) to speed up Jinja2 and SQLAlchemy's
+    queries on Decimal fields respectively. You may also install 'hiredis' if
+    you have opted for the Redis session storage. The following commands will
+    install all of the supported C-extension speedups.
 
-    e.g. $ pip install blueberrypy[speedups]
+      $ pip install blueberrypy[speedups]
 
-    You should also install the appropriate database driver if you have decided
-    to use BlueberryPy's SQLAlchemy support.
+    You should also install the appropriate database driver if you have chosen
+    to use SQLAlchemy.
 
     For more information, the BlueberryPy documentation is available at
     http://blueberrypy.readthedocs.org.
 
     Happy coding!
-    """.format(**blueberrypy_config))
+    ===========================================================================
+    """.format(**config))
 
-    print(footer)
+    logger.info(footer)
 
-def bundle(args, config_dir=None):
 
-    config = BlueberryPyConfiguration(config_dir=config_dir)
+def bundle(**kwargs):
+    """
+    Webassets bundle management.
+
+    usage: blueberrypy bundle [options]
+
+    Before you can use this command to bundle up your Web assets, you should
+    have created either a project skeleton using the 'create' command or
+    provided a configuration directory using the global option -c --config_dir.
+
+    options:
+      -h, --help   show this help message and exit
+      -b, --build  build the asset bundles
+      -w, --watch  automatically rebuild the asset bundles upon changes in the
+                   static directory
+      -c, --clean  delete the generated asset bundles
+
+    """
+
+    config = BlueberryPyConfiguration(config_dir=kwargs.get("config_dir"))
 
     assets_env = config.webassets_env
     if not assets_env:
         raise BlueberryPyNotConfiguredError("Webassets configuration not found.")
 
-    logging.basicConfig()
-    logger = logging.getLogger(__name__)
-
     from webassets.script import CommandLineEnvironment
     assets_cli = CommandLineEnvironment(assets_env, logger)
 
-    if args.build:
+    if kwargs.get("build"):
         try:
             assets_cli.build()
         except AttributeError:
             assets_cli.rebuild()
-    elif args.watch:
+    elif kwargs.get("watch"):
         assets_cli.watch()
-    elif args.clean:
+    elif kwargs.get("clean"):
         assets_cli.clean()
 
-def serve(args, config_dir=None):
 
-    config = BlueberryPyConfiguration(config_dir=config_dir)
+def serve(**kwargs):
+    """
+    Spawn a new running Cherrypy process
+
+    usage: blubeberry serve [options]
+
+    options:
+      -h, --help                                 show this help message and exit
+      -b BINDING, --bind BINDING                 the address and port to bind to.
+                                                 [default: 127.0.0.1:8080]
+      -e ENVIRONMENT, --environment ENVIRONMENT  apply the given config environment
+      -f                                         start a fastcgi server instead of the default HTTP
+                                                 server
+      -s                                         start a scgi server instead of the default HTTP
+                                                 server
+      -d, --daemonize                            run the server as a daemon. [default: False]
+      -p, --drop-privilege                       drop privilege to separately specified umask, uid
+                                                 and gid. [default: False]
+      -P PIDFILE, --pidfile PIDFILE              store the process id in the given file
+      -u UID, --uid UID                          setuid to uid [default: www]
+      -g GID, --gid GID                          setgid to gid [default: www]
+      -m UMASK, --umask UMASK                    set umask [default: 022]
+
+    """
+
+    config = BlueberryPyConfiguration(config_dir=kwargs.get("config_dir"))
 
     cpengine = cherrypy.engine
 
-    cpenviron = args.environment
+    cpenviron = kwargs.get("environment")
     if cpenviron:
-        config = BlueberryPyConfiguration(config_dir=config_dir,
+        config = BlueberryPyConfiguration(config_dir=kwargs.get("config_dir"),
                                           environment=cpenviron)
         cherrypy.config.update({"environment": cpenviron})
 
@@ -212,7 +278,7 @@ def serve(args, config_dir=None):
 
     if config.use_redis:
         from blueberrypy.session import RedisSession
-        cherrypy.lib.tools.sessions.RedisSession = RedisSession
+        cherrypy.lib.sessions.RedisSession = RedisSession
 
     if config.use_sqlalchemy:
         from blueberrypy.plugins import SQLAlchemyPlugin
@@ -232,25 +298,25 @@ def serve(args, config_dir=None):
     # override the settings in the config files
     cherrypy.config.update(config.app_config)
 
-    if args.binding:
-        address, port = args.binding.strip().split(":")
+    if kwargs.get("bind"):
+        address, port = kwargs.get("bind").strip().split(":")
         cherrypy.server.socket_host = address
         cherrypy.server.socket_port = int(port)
 
-    if args.daemonize:
+    if kwargs.get("daemonize"):
         cherrypy.config.update({'log.screen': False})
         Daemonizer(cpengine).subscribe()
 
-    if args.drop_privilege:
+    if kwargs.get("drop_privilege"):
         cherrypy.config.update({'engine.autoreload_on': False})
-        DropPrivileges(cpengine, umask=args.umask or 022,
-                       uid=args.uid or "www",
-                       gid=args.gid or "www").subscribe()
+        DropPrivileges(cpengine, umask=int(kwargs.get("umask")),
+                       uid=kwargs.get("uid") or "www",
+                       gid=kwargs.get("gid") or "www").subscribe()
 
-    if args.pidfile:
-        PIDFile(cpengine, args.pidfile).subscribe()
+    if kwargs.get("pidfile"):
+        PIDFile(cpengine, kwargs.get("pidfile")).subscribe()
 
-    fastcgi, scgi = getattr(args, 'fastcgi'), getattr(args, 'scgi')
+    fastcgi, scgi = kwargs.get("fastcgi"), kwargs.get("scgi")
     if fastcgi and scgi:
         cherrypy.log.error("You may only specify one of the fastcgi and "
                            "scgi options.", 'ENGINE')
@@ -268,7 +334,7 @@ def serve(args, config_dir=None):
         elif scgi:
             f = servers.FlupSCGIServer(application=cherrypy.tree,
                                        bindAddress=addr)
-        s = servers.ServerAdapter(cpengine, httpserver=f, bind_addr=addr)
+        s = servers.ServerPlugin(cpengine, httpserver=f, bind_addr=addr)
         s.subscribe()
 
     if hasattr(cpengine, 'signal_handler'):
@@ -279,12 +345,12 @@ def serve(args, config_dir=None):
         cpengine.console_control_handler.subscribe()
 
     # mount the controllers
-    for script_name, section in config.controllers_config.iteritems():
+    for script_name, section in config.controllers_config.viewitems():
         section = section.copy()
         controller = section.pop("controller")
         if isinstance(controller, cherrypy.dispatch.RoutesDispatcher):
             routes_config = {'/': {"request.dispatch": controller}}
-            for path in section.iterkeys():
+            for path in section.viewkeys():
                 if path.strip() == '/':
                     routes_config['/'].update(section['/'])
                 else:
@@ -316,7 +382,20 @@ def serve(args, config_dir=None):
     else:
         cpengine.block()
 
-def console(args, config_dir=None):
+
+def console(**kwargs):
+    """
+    An REPL fully configured for experimentation.
+
+    usage:
+        blueberrypy console [options]
+
+    options:
+        -e ENVIRONMENT, --environment=ENVIRONMENT  apply the given config environment
+        -h, --help                                 show this help message and exit
+
+    """
+
     banner = """
 *****************************************************************************
 * If the configuration file you specified contains a [sqlalchemy_engine*]   *
@@ -324,135 +403,51 @@ def console(args, config_dir=None):
 * for you automatically already.                                            *
 *****************************************************************************
 """
-    cherrypy.config.update({"environment": args.environment})
+    environment = kwargs.get("environment")
+    config_dir = kwargs.get("config_dir")
+    environment and cherrypy.config.update({"environment": environment})
     Console(BlueberryPyConfiguration(config_dir=config_dir,
-                                     environment=args.environment)).interact(banner)
+                                     environment=environment)).interact(banner)
 
-def create_parser(config_dir=None):
-    parser = argparse.ArgumentParser(prog="create",
-                                     description="Create a project skeleton.")
-    parser.add_argument("-p", "--path", help="the path to create the project. "
-                        "default is the current directory")
-    parser.add_argument("-d", "--dry-run", action="store_true", default=False,
-                         help="do not write skeleton. prints out the content instead")
-    return parser
-
-def bundle_parser(config_dir=None):
-
-    description = textwrap.dedent("""Webassets bundle management.
-
-    Before you can use this command to bundle up your Web assets, you should
-    have created either a project skeleton using the 'create' command or
-    provided a configuration directory using the global option -c --config_dir.
-    """)
-
-    config = BlueberryPyConfiguration(config_dir=config_dir)
-    if not config.use_webassets:
-        print(description)
-        sys.exit(1)
-
-    parser = argparse.ArgumentParser(prog="bundle", description=description)
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("-b", "--build", action="store_true", dest="build",
-                        help="build the asset bundles")
-
-    group.add_argument("-w", "--watch", action="store_true", dest="watch",
-                        help="automatically rebuild the asset bundles upon changes in the static directory")
-
-    group.add_argument("-c", "--clean", action="store_true", dest="clean",
-                        help="delete the generated asset bundles")
-    return parser
-
-def serve_parser(config_dir=None):
-
-    parser = argparse.ArgumentParser(prog="serve",
-                                     description="spawn a new running cherrypy process")
-
-    parser.add_argument("-b", "--bind", dest="binding",
-                         default="127.0.0.1:8080",
-                         help="the address and port to bind to. [default: %(default)s]")
-    parser.add_argument("-e", "--environment", dest="environment",
-                         default=None,
-                         help="apply the given config environment")
-    parser.add_argument("-f", action="store_true", dest="fastcgi",
-                         help="start a fastcgi server instead of the default HTTP server")
-    parser.add_argument("-s", action="store_true", dest="scgi",
-                         help="start a scgi server instead of the default HTTP server")
-    parser.add_argument("-d", "--daemonize", action="store_true",
-                         default=False,
-                         help="run the server as a daemon. [default: %(default)s]")
-    parser.add_argument("-p", "--drop-privilege", action="store_true",
-                         default=False,
-                         help="drop privilege to separately specified umask, "
-                         "uid and gid. [default: %(default)s]")
-    parser.add_argument('-P', '--pidfile', dest='pidfile', default=None,
-                         help="store the process id in the given file")
-    parser.add_argument("-u", "--uid", default="www",
-                         help="setuid to uid [default: %(default)s]")
-    parser.add_argument("-g", "--gid", default="www",
-                         help="setgid to gid [default: %(default)s]")
-    parser.add_argument("-m", "--umask", default="022", type=int,
-                         help="set umask [default: %(default)s]")
-    return parser
-
-def console_parser(config_dir=None):
-
-    parser = argparse.ArgumentParser(prog="bundle",
-                                     description="An REPL fully configured for experimentation.")
-    parser.add_argument("-e", "--environment", dest="environment",
-                         default=None,
-                         help="apply the given config environment")
-
-    return parser
 
 def main():
-    description = textwrap.dedent("""BlueberryPy lightweight pluggable Web application framework command line interface.
+    args = docopt(__doc__, options_first=True)
+    config_dir = args["--config-dir"]
+    command = args["COMMAND"]
+    command_args = args["ARGS"]
 
-    Type 'blueberrypy -h' or 'blueberrypy --help' for general help.
-    Type 'blueberrypy help <command>' for help on that specific command.
-
-    commands:
-
-    help                print this help or a command's if an argument is given
-    create              create a project skeleton
-    console             BlueberryPy REPL for experimentations
-    bundle              bundles up web assets (type 'blueberrypy help bundle' for details)
-    serve               spawn a new CherryPy server process
-    """)
-
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                     description=description)
-    parser.add_argument("-v", "--version", action="store_true", default=False,
-                        help="print version information and exit.")
-
-    parser.add_argument("-C", "--config_dir", help="path to the config directory")
-
-    parser.add_argument("command", nargs="?", default="help", help="the action to perform")
-
-    args, extraargs = parser.parse_known_args()
-    if args.version:
-        print("BlueberryPy version %s" % blueberrypy.__version__)
-        parser.exit(0)
+    if args["--version"]:
+        logger.info("BlueberryPy version %s" % blueberrypy.__version__)
+        sys.exit(0)
 
     def get_command_parser_and_callback(command):
+        doc, callback = None, None
         if command == "create":
-            return (create_parser(args.config_dir), create)
+            doc, callback = create.__doc__, create
         elif command == "console":
-            return (console_parser(args.config_dir), console)
+            doc, callback = console.__doc__, console
         elif command == "bundle":
-            return (bundle_parser(args.config_dir), bundle)
+            doc, callback = bundle.__doc__, bundle
         elif command == "serve":
-            return (serve_parser(args.config_dir), serve)
-
-        parser.error("Unknown command %r" % args.command)
-
-    if args.command == "help":
-        if extraargs:
-            subparser, _ = get_command_parser_and_callback(extraargs[0])
-            subparser.print_help()
+            doc, callback = serve.__doc__, serve
+        elif command == "help":
+            if command_args and command_args[0] in ["create", "console", "bundle", "serve"]:
+                callback = globals()[command_args[0]]
+                doc = callback.__doc__
+            else:
+                doc = __doc__
+            logger.info(textwrap.dedent(doc))
+            sys.exit(0)
         else:
-            parser.print_help()
-    else:
-        subparser, func = get_command_parser_and_callback(args.command)
-        cmdargs = subparser.parse_args(extraargs)
-        func(cmdargs, args.config_dir)
+            logger.info(textwrap.dedent(__doc__))
+            sys.exit(0)
+
+        return partial(docopt, textwrap.dedent(doc)), callback
+
+    subparser, func = get_command_parser_and_callback(command)
+
+    def docopt_parse_results_to_kwargs(dct):
+        return dict([(k.replace("--", "").replace("-", "_"), v) for k, v in dct.viewitems()])
+
+    func(config_dir=config_dir, **docopt_parse_results_to_kwargs(
+        subparser(argv=[command] + command_args)))

@@ -1,11 +1,6 @@
-import functools
 import hashlib
 import hmac
-
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
+import unittest
 
 from base64 import b64encode
 from datetime import date, time, datetime, timedelta
@@ -13,14 +8,19 @@ from datetime import date, time, datetime, timedelta
 import testconfig
 
 from geoalchemy2 import Geometry
-from sqlalchemy import Column, Integer, Date, DateTime, Time, Interval, Enum, \
-    ForeignKey, UnicodeText, engine_from_config
+from geoalchemy2.shape import to_shape
+from shapely.geometry import Point
+from sqlalchemy import (Column, Integer, Date, DateTime, Time, Interval, Enum,
+                        ForeignKey, UnicodeText, engine_from_config)
 from sqlalchemy.orm import sessionmaker, scoped_session, relationship, backref
 from sqlalchemy.ext.declarative import declarative_base
 
-from blueberrypy.util import CSRFToken, pad_block_cipher_message, \
-    unpad_block_cipher_message, from_collection, to_collection
+from blueberrypy.util import (CSRFToken, pad_block_cipher_message,
+                              unpad_block_cipher_message,
+                              from_collection, to_collection)
 
+
+# NOTE: REMEMBER TO SETUP POSTGIS!!!
 
 engine = engine_from_config(testconfig.config["sqlalchemy_engine"], '')
 Session = scoped_session(sessionmaker(engine))
@@ -53,7 +53,6 @@ class RelatedEntitySubclass(RelatedEntity):
     subclass_prop = Column(UnicodeText)
 
 
-# remember to setup postgis
 class TestEntity(Base):
 
     __tablename__ = "testentity"
@@ -69,7 +68,7 @@ class TestEntity(Base):
     time = Column(Time)
     datetime = Column(DateTime)
     interval = Column(Interval)
-    geo = Column(Geometry('POINT', srid=4326))
+    geo = Column(Geometry('POINT'))
 
     @property
     def combined(self):
@@ -90,61 +89,31 @@ class DerivedTestEntity(TestEntity):
     derivedprop = Column(Integer)
 
 
-def orm_session(func):
-    def _orm_session(*args, **kwargs):
-        session = Session()
-        try:
-            return func(*args, **kwargs)
-        except:
-            raise
-        finally:
-            session.close()
-    return functools.update_wrapper(_orm_session, func)
-
-
 class CSRFTokenTest(unittest.TestCase):
 
     def test_csrftoken(self):
-        csrftoken = CSRFToken("/test", "secret", 1)
+        csrftoken = CSRFToken("/test", "secret", '1')
 
-        mac = hmac.new("secret", digestmod=hashlib.sha256)
-        mac.update("/test")
-        mac.update('1')
+        mac = hmac.new(b"secret", digestmod=hashlib.sha256)
+        mac.update(b"/test")
+        mac.update(b'1')
         testtoken = b64encode(mac.digest())
 
-        self.assertEqual(str(csrftoken), testtoken)
+        self.assertEqual(csrftoken.token, testtoken)
         self.assertTrue(csrftoken.verify(testtoken))
-
-        mac = hmac.new("secret2", digestmod=hashlib.sha256)
-        mac.update("/test")
-        mac.update('1')
-        testtoken = b64encode(mac.digest())
-
-        self.assertNotEqual(str(csrftoken), testtoken)
-        self.assertFalse(csrftoken.verify(testtoken))
-
-        mac = hmac.new("secret", digestmod=hashlib.sha256)
-        mac.update("/test2")
-        mac.update('1')
-        testtoken = b64encode(mac.digest())
-
-        self.assertNotEqual(str(csrftoken), testtoken)
-        self.assertFalse(csrftoken.verify(testtoken))
-
-        mac = hmac.new("secret", digestmod=hashlib.sha256)
-        mac.update("/test2")
-        mac.update('2')
-        testtoken = b64encode(mac.digest())
-
-        self.assertNotEqual(str(csrftoken), testtoken)
-        self.assertFalse(csrftoken.verify(testtoken))
+        self.assertTrue(csrftoken.verify(CSRFToken("/test", "secret", '1')))
+        self.assertEqual(bytes(csrftoken), bytes(testtoken))
+        self.assertEqual(unicode(csrftoken), unicode(testtoken))
+        self.assertEqual(str(csrftoken), str(testtoken))
+        self.assertEqual(csrftoken, CSRFToken("/test", "secret", '1'))
+        self.assertNotEqual(csrftoken, CSRFToken("/test2", "secret", '1'))
+        self.assertNotEqual(csrftoken, CSRFToken("/test", "secret2", '1'))
+        self.assertNotEqual(csrftoken, CSRFToken("/test", "secret", '2'))
 
 
 class CollectionUtilTest(unittest.TestCase):
 
-    @classmethod
-    @orm_session
-    def setup_class(cls):
+    def setUp(self):
         metadata.create_all(engine)
 
         te = DerivedTestEntity(id=1,
@@ -153,21 +122,19 @@ class CollectionUtilTest(unittest.TestCase):
                                derivedprop=2,
                                datetime=datetime(2012, 1, 1, 0, 0, 0),
                                interval=timedelta(seconds=3600),
-                               geo="POINT(45.0 45.0)")
+                               geo="POINT(45 45)")
         session = Session()
         session.add(te)
 
         te.related = [RelatedEntity(key=u"related1"),
                       RelatedEntitySubclass(key=u"related2", subclass_prop=u"sub1")]
 
-        session.commit()
-
         te2 = TestEntity(id=2,
                          date=date(2013, 2, 2),
                          time=time(1, 1, 1),
                          datetime=datetime(2013, 2, 2, 1, 1, 1),
                          interval=timedelta(seconds=3601),
-                         geo="POINT(46.0 44.0)")
+                         geo="POINT(46 44)")
 
         session = Session()
         session.add(te2)
@@ -176,17 +143,13 @@ class CollectionUtilTest(unittest.TestCase):
                        RelatedEntity(key=u"related4")]
 
         session.commit()
-    setUpClass = setup_class
 
-    @classmethod
-    @orm_session
-    def teardown_class(cls):
+    def tearDown(self):
+        session = Session()
+        session.close()
         metadata.drop_all(engine)
-    testDownClass = teardown_class
 
-    @orm_session
     def test_to_collection(self):
-
         self.assertEqual(1, to_collection(1))
         self.assertEqual(1.1, to_collection(1.1))
         self.assertEqual("str", to_collection("str"))
@@ -205,7 +168,7 @@ class CollectionUtilTest(unittest.TestCase):
                'derivedprop': 2,
                'datetime': {'datetime': '2012-01-01T00:00:00'},
                'geo': {'type': 'Point',
-                       'coordinates': (45.0, 45.0)}}
+                       'coordinates': (45, 45)}}
 
         session = Session()
         te = session.query(TestEntity).get(1)
@@ -220,7 +183,7 @@ class CollectionUtilTest(unittest.TestCase):
                'derivedprop': 2,
                'datetime': {'datetime': '2012-01-01T00:00:00'},
                'geo': {'type': 'Point',
-                       'coordinates': (45.0, 45.0)},
+                       'coordinates': (45, 45)},
                'related': [{'id': 1,
                             'discriminator': 'related',
                             'key': u'related1',
@@ -244,7 +207,7 @@ class CollectionUtilTest(unittest.TestCase):
                'discriminator': 'derived',
                'datetime': {'datetime': '2012-01-01T00:00:00'},
                'combined': {'datetime': '2012-01-01T00:00:00'},
-               'geo': {'type': 'Point', 'coordinates': (45.0, 45.0)}}
+               'geo': {'type': 'Point', 'coordinates': (45, 45)}}
 
         self.assertEqual(doc, to_collection(te, includes=["combined"],
                                             excludes=["id", "interval", "derivedprop", "related"]))
@@ -255,7 +218,7 @@ class CollectionUtilTest(unittest.TestCase):
         self.assertEqual({'time': '00:00:00'}, to_collection(time(0, 0, 0)))
         self.assertEqual({'interval': 3600}, to_collection(timedelta(seconds=3600)))
         self.assertEqual({'datetime': '2012-01-01T00:00:00'}, to_collection(datetime(2012, 1, 1, 0, 0, 0)))
-        self.assertEqual({'type': 'Point', 'coordinates': (45.0, 45.0)}, to_collection(te.geo))
+        self.assertEqual({'type': 'Point', 'coordinates': (45, 45)}, to_collection(te.geo))
 
         tes = session.query(TestEntity).all()
         result = to_collection(tes, recursive=True,
@@ -266,9 +229,7 @@ class CollectionUtilTest(unittest.TestCase):
         serialized_doc = '[{"combined": {"datetime": "2012-01-01T00:00:00"}, "date": {"date": "2012-01-01"}, "datetime": {"datetime": "2012-01-01T00:00:00"}, "discriminator": "derived", "geo": {"coordinates": [45.0, 45.0], "type": "Point"}, "related": [{"discriminator": "related", "id": 1, "key": "related1", "parent_id": 1}, {"discriminator": "relatedsubclass", "id": 2, "key": "related2", "parent_id": 1, "subclass_prop": "sub1"}], "time": {"time": "00:00:00"}}, {"date": {"date": "2013-02-02"}, "datetime": {"datetime": "2013-02-02T01:01:01"}, "discriminator": "base", "geo": {"coordinates": [46.0, 44.0], "type": "Point"}, "id": 2, "interval": {"interval": 3601}, "related": [{"discriminator": "related", "id": 3, "key": "related3", "parent_id": 2}, {"discriminator": "related", "id": 4, "key": "related4", "parent_id": 2}], "time": {"time": "01:01:01"}}]'
         self.assertEqual(serialized_doc, result)
 
-    @orm_session
     def test_from_collection(self):
-
         self.assertEqual(1, from_collection(1, None))
         self.assertEqual(1.1, from_collection(1.1, None))
         self.assertEqual("str", from_collection("str", None))
@@ -283,7 +244,7 @@ class CollectionUtilTest(unittest.TestCase):
                'id': 1,
                'derivedprop': 2,
                'datetime': {'datetime': '2012-01-01T00:00:00'},
-               'geo': {'type': 'Point', 'coordinates': (45.0, 45.0)},
+               'geo': {'type': 'Point', 'coordinates': (45, 45)},
                'related': [{'key': u'key1', 'parent_id': 1, 'discriminator': 'related'},
                            {'key': u'key2', 'parent_id': 1, 'discriminator': 'relatedsubclass', 'subclass_prop': 'sub'}]}
 
@@ -295,7 +256,7 @@ class CollectionUtilTest(unittest.TestCase):
         self.assertEqual(te.datetime, datetime(2012, 1, 1, 0, 0, 0))
         self.assertEqual(te.id, 1)
         self.assertEqual(te.derivedprop, 2)
-        self.assertEqual(te.geo.geom_wkt, "POINT (45.0000000000000000 45.0000000000000000)")
+        self.assertEqual(to_shape(te.geo).wkt, Point(45, 45).wkt)
         self.assertIsNone(te.related[0].id)
         self.assertEqual(te.related[0].parent_id, 1)
         self.assertEqual(te.related[0].key, "key1")
@@ -306,13 +267,13 @@ class CollectionUtilTest(unittest.TestCase):
         self.assertEqual(te.related[1].discriminator, "relatedsubclass")
         self.assertEqual(te.related[1].subclass_prop, "sub")
 
-        #TODO: testing loading of persisted entity, json format, excludes
+        # TODO: testing loading of persisted entity, json format, excludes
         doc = {'date': {'date': '2012-01-01'},
                'time': {'time': '00:00:00'},
                'interval': {'interval': 3600},
                'id': 1,
                'datetime': {'datetime': '2012-01-01T00:00:00'},
-               'geo': {'type': 'Point', 'coordinates': (45.0, 45.0)},
+               'geo': {'type': 'Point', 'coordinates': (45, 45)},
                'related': [{'key': u'key1', 'parent_id': 1, 'discriminator': u'related', "id": 3}]}
 
         session = Session()
@@ -323,7 +284,7 @@ class CollectionUtilTest(unittest.TestCase):
         self.assertEqual(te.interval, timedelta(seconds=3601))
         self.assertEqual(te.datetime, datetime(2012, 1, 1, 0, 0, 0))
         self.assertEqual(te.id, 1)
-        self.assertEqual(te.geo.geom_wkt, "POINT (45.0000000000000000 45.0000000000000000)")
+        self.assertEqual(to_shape(te.geo).wkt, Point(45, 45).wkt)
         self.assertEqual(te.related[0].parent_id, 1)
         self.assertEqual(te.related[0].key, u"key1")
         self.assertEqual(te.related[0].id, 3)
@@ -339,7 +300,7 @@ class CollectionUtilTest(unittest.TestCase):
         self.assertEqual(te.related[-1].discriminator, "related")
 
         te = DerivedTestEntity()
-        json_doc = '{"time": {"time": "00:00:00"}, "date": {"date": "2012-01-01"}, "geo": {"type": "Point", "coordinates": [45.0, 45.0]}, "interval": {"interval": 3600}, "datetime": {"datetime": "2012-01-01T00:00:00"}, "id": 1, "related": [{"parent_id": 1, "key": "key1", "discriminator": "related"}, {"parent_id": 1, "subclass_prop": "sub", "key": "key2", "discriminator": "relatedsubclass"}], "derivedprop": 2}'
+        json_doc = '{"time": {"time": "00:00:00"}, "date": {"date": "2012-01-01"}, "geo": {"type": "Point", "coordinates": [45, 45]}, "interval": {"interval": 3600}, "datetime": {"datetime": "2012-01-01T00:00:00"}, "id": 1, "related": [{"parent_id": 1, "key": "key1", "discriminator": "related"}, {"parent_id": 1, "subclass_prop": "sub", "key": "key2", "discriminator": "relatedsubclass"}], "derivedprop": 2}'
         te = from_collection(json_doc, te, format="json")
         self.assertEqual(te.date, date(2012, 1, 1))
         self.assertEqual(te.time, time(0, 0, 0))
@@ -347,7 +308,7 @@ class CollectionUtilTest(unittest.TestCase):
         self.assertEqual(te.datetime, datetime(2012, 1, 1, 0, 0, 0))
         self.assertEqual(te.id, 1)
         self.assertEqual(te.derivedprop, 2)
-        self.assertEqual(te.geo.geom_wkt, "POINT (45.0000000000000000 45.0000000000000000)")
+        self.assertEqual(to_shape(te.geo).wkt, Point(45, 45).wkt)
         self.assertIsNone(te.related[0].id)
         self.assertEqual(te.related[0].parent_id, 1)
         self.assertEqual(te.related[0].key, "key1")
@@ -367,3 +328,7 @@ class BlockCipherPaddingTest(unittest.TestCase):
 
     def test_unpad_block_cipher_message(self):
         self.assertEqual(unpad_block_cipher_message("message{{{{{{{{{"), "message")
+
+
+if __name__ == '__main__':
+    unittest.main()

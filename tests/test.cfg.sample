@@ -1,8 +1,0 @@
-[sqlalchemy_engine]
-url = postgresql+psycopg2://tester:tester@localhost/test_blueberrypy
-
-[sqlalchemy_engine_tests.test_tools.User]
-url = postgresql+psycopg2://tester:tester@localhost/test_blueberrypy
-
-[sqlalchemy_engine_tests.test_tools.Address]
-url = postgresql+psycopg2://tester:tester@localhost/test_blueberrypy

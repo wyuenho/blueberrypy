@@ -6,7 +6,7 @@ import threading
 import time
 
 import cherrypy
-from cherrypy.lib.tools.sessions import base as sessions
+from cherrypy.lib import sessions
 from cherrypy.test import helper
 
 from blueberrypy.session import RedisSession
@@ -110,7 +110,7 @@ def setup_server():
             'tools.sessions.name': 'temp',
             'tools.sessions.persistent': False}
 
-    cherrypy.lib.tools.sessions.RedisSession = RedisSession
+    cherrypy.lib.sessions.RedisSession = RedisSession
     cherrypy.tree.mount(Root())
 
 # testing that redis-py is available and that we have a redis server running

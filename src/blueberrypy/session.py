@@ -1,11 +1,15 @@
-import cPickle as pickle
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
+
 import logging
 import threading
 import time
 
 from pprint import pformat
 
-from cherrypy.lib.tools.sessions.base import Session
+from cherrypy.lib.sessions import Session
 from redis import StrictRedis as _RedisClient
 
 
@@ -38,7 +42,7 @@ class RedisSession(Session):
 
         cls.prefix = normalize_sep(kwargs.pop("prefix", cls.prefix))
 
-        for k, v in kwargs.items():
+        for k, v in kwargs.viewitems():
             setattr(cls, k, v)
         cls.cache = cache = _RedisClient(**kwargs)
         redis_info = cache.info()
