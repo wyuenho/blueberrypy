@@ -1,14 +1,12 @@
+from __future__ import print_function
+
 import difflib
-import logging
 import os.path
 import re
 import shutil
 
 from cherrypy.test.webtest import getchar
 from jinja2 import Environment as Jinja2Environment
-
-
-logger = logging.getLogger(__name__)
 
 
 def project_template_filter(blueberrypy_config, path):
@@ -92,7 +90,7 @@ class ProjectCreator(object):
                         if not os.path.exists(dest_fullpath):
                             os.makedirs(dest_fullpath)
                     else:
-                        logger.info("created directory " + dest_fullpath)
+                        print("created directory " + dest_fullpath)
 
                     self.process_dir(root, relpath)
                 else:
@@ -112,10 +110,10 @@ class ProjectCreator(object):
                                     outfile.write(tmpl.render(self.blueberrypy_config))
                             elif os.path.exists(dest_fullpath):
                                 while True:
-                                    logger.info("%s already exists, "
-                                                "do you wish to overwrite it?" % dest_fullpath,
-                                                "[Y]es [N]o [A]ll [C]ompare the files >> ",
-                                                sep='\n', end='')
+                                    print("%s already exists, "
+                                          "do you wish to overwrite it?" % dest_fullpath,
+                                          "[Y]es [N]o [A]ll [C]ompare the files >> ",
+                                          sep='\n', end='')
                                     i = getchar().upper()
 
                                     if not isinstance(i, type("")):
@@ -124,7 +122,7 @@ class ProjectCreator(object):
                                     if i not in "YNAC":
                                         continue
 
-                                    logger.info(i.upper())
+                                    print(i.upper())
 
                                     if i == 'Y' or i == 'A':
                                         with open(dest_fullpath, 'w') as outfile:
@@ -136,33 +134,32 @@ class ProjectCreator(object):
                                         break
 
                                     elif i == 'N':
-                                        logger.info("%s has been skipped." % dest_fullpath)
+                                        print("%s has been skipped." % dest_fullpath)
                                         break
 
                                     elif i == 'C':
                                         with open(dest_fullpath) as infile:
                                             old = infile.read()
                                         new = tmpl.render(self.blueberrypy_config)
-                                        logger.info(
+                                        print(
                                             "\n".join(difflib.unified_diff(old.splitlines(),
                                                                            new.splitlines(),
                                                                            dest_fullpath + ".old",
                                                                            dest_fullpath + ".new")))
                                         continue
                         else:
-                            logger.info("created file " + dest_fullpath)
-                            logger.info(tmpl.render(self.blueberrypy_config))
+                            print("created file " + dest_fullpath)
+                            print(tmpl.render(self.blueberrypy_config))
                     else:
                         if not self.dry_run:
                             if self.overwrite or not os.path.exists(dest_fullpath):
                                 shutil.copy(src_fullpath, dest_fullpath)
                             elif os.path.exists(dest_fullpath):
                                 while True:
-                                    logger.info(
-                                        "\n%s already exists, "
-                                        "do you wish to overwrite it?" % dest_fullpath,
-                                        "[Y]es [N]o [A]ll [C]ompare the files >> ",
-                                        sep='\n', end='')
+                                    print("\n%s already exists, "
+                                          "do you wish to overwrite it?" % dest_fullpath,
+                                          "[Y]es [N]o [A]ll [C]ompare the files >> ",
+                                          sep='\n', end='')
                                     i = getchar().upper()
 
                                     if not isinstance(i, type("")):
@@ -171,7 +168,7 @@ class ProjectCreator(object):
                                     if i not in "YNAC":
                                         continue
 
-                                    logger.info(i.upper())
+                                    print(i.upper())
 
                                     if i == 'Y' or i == 'A':
                                         shutil.copy(src_fullpath, dest_fullpath)
@@ -182,7 +179,7 @@ class ProjectCreator(object):
                                         break
 
                                     elif i == 'N':
-                                        logger.info("%s has been skipped." % dest_fullpath)
+                                        print("%s has been skipped." % dest_fullpath)
                                         break
 
                                     elif i == 'C':
@@ -190,13 +187,13 @@ class ProjectCreator(object):
                                             old = infile.read()
                                         with open(src_fullpath) as infile:
                                             new = infile.read()
-                                        logger.info(
+                                        print(
                                             "\n".join(difflib.unified_diff(old.splitlines(),
                                                                            new.splitlines(),
                                                                            dest_fullpath + ".old",
                                                                            dest_fullpath + ".new")))
                                         continue
                         else:
-                            logger.info("copied file " + dest_fullpath)
+                            print("copied file " + dest_fullpath)
 
 create_project = ProjectCreator
