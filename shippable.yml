@@ -1,13 +1,12 @@
+built_environment: Ubuntu 13.10
+
 language: python
 
 python:
   - 2.7
 
-addons:
-  postgresql: 9.3
-
 services:
-  - redis-server
+  - redis
 
 install:
   - pip install -e .
