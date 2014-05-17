@@ -14,7 +14,7 @@ install:
   - pip install --allow-external cdecimal blueberrypy[all,speedups,dev]
 
 before_script:
-  - psql --command='CREATE ROLE tester PASSWORD tester INHERIT LOGIN;' --username=postgres
+  - psql --command="CREATE ROLE tester PASSWORD 'tester' INHERIT LOGIN;" --username=postgres
   - createdb --encoding=UTF-8 --username=postgres --owner=tester test_blueberrypy
   - psql --command='CREATE EXTENSION postgis;' --dbname=test_blueberrypy --username=postgres
   - psql --command='CREATE EXTENSION postgis_topology;' --dbname=test_blueberrypy --username=postgres
