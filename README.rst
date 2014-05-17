@@ -1,7 +1,8 @@
 BlueberryPy
 ===========
 
-|travis-status|_
+.. image:: https://travis-ci.org/wyuenho/blueberrypy.svg
+    :target: https://travis-ci.org/wyuenho/blueberrypy
 
 Same as CherryPy, just with a different filling.
 
@@ -124,7 +125,3 @@ Now your package is ready to be served::
 Type `http://localhost:8080` into your browser's location bar and voila!
 
 Happy coding!
-
-
-.. |travis-status| image:: https://travis-ci.org/wyuenho/blueberrypy.svg
-.. _travis-status: https://travis-ci.org/wyuenho/blueberrypy
