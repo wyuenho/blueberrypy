@@ -11,7 +11,7 @@ services:
 
 install:
   - pip install -e .
-  - pip install blueberrypy[all,speedups,dev]
+  - pip install --allow-external cdecimal blueberrypy[all,speedups,dev]
 
 before_script:
   - createuser --pwprompt --username=postgres tester
