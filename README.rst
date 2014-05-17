@@ -1,5 +1,9 @@
 BlueberryPy
 ===========
+
+.. image:: https://travis-ci.org/wyuenho/blueberrypy.png
+    :target: https://travis-ci.org/wyuenho/blueberrypy
+
 Same as CherryPy, just with a different filling.
 
 Read the lastest documents at `<http://blueberrypy.readthedocs.org/>`_.
@@ -121,4 +125,3 @@ Now your package is ready to be served::
 Type `http://localhost:8080` into your browser's location bar and voila!
 
 Happy coding!
-

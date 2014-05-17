@@ -11,13 +11,14 @@ class Console(InteractiveConsole):
 
         try:
             import readline
-        except ImportError, e:
+        except ImportError as e:
             print(e)
         else:
             import rlcompleter
 
         startupfile = os.environ.get("PYTHONSTARTUP")
-        if startupfile: execfile(startupfile, {}, {})
+        if startupfile:
+            execfile(startupfile, {}, {})
 
         proj_meta = config.project_metadata
         if proj_meta:
@@ -40,7 +41,7 @@ class Console(InteractiveConsole):
             return engine_from_config(section, '')
         else:
             engine_bindings = {}
-            for section_name, section in config.iteritems():
+            for section_name, section in config.viewitems():
                 if section_name.startswith(prefix):
                     model_fqn = section_name[len(prefix) + 1:]
                     model_fqn_parts = model_fqn.rsplit('.', 1)
@@ -65,7 +66,7 @@ class Console(InteractiveConsole):
                 for name in model.__all__:
                     lcls[name] = getattr(model, name)
             else:
-                for name, obj in vars(model).iteritems():
+                for name, obj in vars(model).viewitems():
                     if not name.startswith("_"):
                         lcls[name] = obj
 
@@ -96,19 +97,18 @@ class Console(InteractiveConsole):
                 if encoding:
                     try:
                         return r.decode(encoding)
-                    except UnicodeError:
+                    except (UnicodeError, AttributeError):
                         pass
                     return r
         except EOFError:
             self.write(os.linesep)
             session = self.locals.get("session")
-            if session is not None and \
-                session.new or \
-                session.dirty or \
-                session.deleted:
+            if (session is not None and
+                session.new or
+                session.dirty or
+                session.deleted):
 
-                r = raw_input("Do you wish to commit your "
-                              "database changes? [Y/n]")
+                r = raw_input("Do you wish to commit your database changes? [Y/n]")
                 if not r.lower().startswith("n"):
                     self.push("session.commit()")
             raise

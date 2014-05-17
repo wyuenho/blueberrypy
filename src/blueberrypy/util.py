@@ -1,8 +1,9 @@
 import copy
 import hashlib
 import hmac
+import logging
+import sys
 import textwrap
-import warnings
 
 from base64 import b64encode, urlsafe_b64encode
 
@@ -24,17 +25,19 @@ else:
 
 try:
     from geoalchemy2.elements import WKTElement, WKBElement
-    from shapely.geometry import asShape, mapping as asGeoJSON
-    from shapely.wkb import loads as wkb_decode
-    from shapely.wkt import loads as wkt_decode
+    from geoalchemy2.shape import from_shape, to_shape
+    from shapely.geometry import shape as as_shape, mapping as as_geojson
 except ImportError:
     geos_support = False
 else:
     geos_support = True
 
 
-__all__ = ["to_collection", "to_mapping", "from_mapping", "CSRFToken",
+__all__ = ["from_collection", "to_collection", "CSRFToken",
            "pad_block_cipher_message", "unpad_block_cipher_message"]
+
+
+logger = logging.getLogger(__name__)
 
 
 def _get_model_properties(model, excludes, recursive=False):
@@ -54,6 +57,7 @@ def _get_model_properties(model, excludes, recursive=False):
                 props[prop.key] = prop
     return props
 
+
 def _ensure_is_dict(key, inc_exc):
 
     if inc_exc:
@@ -70,17 +74,13 @@ def _ensure_is_dict(key, inc_exc):
 
     return {}
 
-def to_mapping(value, includes=None, excludes=None, format=None, recursive=False, **json_kwargs):
-    warnings.warn("to_mapping() is deprecated and will be removed in 0.6, please use to_collection() instead.")
-    return to_collection(value, includes=includes, excludes=excludes, format=format,
-                         recursive=recursive, **json_kwargs)
 
 def to_collection(from_, includes=None, excludes=None, format=None, recursive=False, **json_kwargs):
-    """Utility function to convert complex values and SQLAlchemy declarative model objects to a Python collection.
-    
+    """Convert complex values and SQLAlchemy declarative model objects to a Python collections.
+
     This function generally works very similar to `json.dump()`, with the
     following enhancements:
-    
+
     SQLAlchemy declarative model
     ----------------------------
     If `from_` is a SQLAlchemy declarative model object (identified by the
@@ -98,25 +98,25 @@ def to_collection(from_, includes=None, excludes=None, format=None, recursive=Fa
     date       date        .isoformat()
     timedelta  interval    .seconds
     ========== =========== =============
-    
+
     Furthermore, GeoAlchemy2 `WKT/WKBElement values are also converted to
     `geojson <http://geojson.org/>`_ format using `Shapely
     <http://toblerity.github.com/shapely/>_`.
-    
+
     If `includes` is provided, additional attribute(s) in the model value(s)
     will be included in the returned result. `includes` can be a string, an
     iterable of strings, or a mapping of classes to iterables of strings. This
     is usually used for getting the values of the un-mapped properties from the
     model instances.
-    
+
     If `excludes` is provided, which can also be a string, an iterable of
     strings, or a mapping of classes to iterables of strings, the attribute(s)
     will be excluded from the returned result.
-    
+
     Internally, `to_collection()` will convert the provided `includes` and
     `excludes` property sets to a mapping of the classes of the values to lists
     of property key strings.
-    
+
     **Note:** Mapped property names starting with '_' will never be included in the
     returned result.
 
@@ -137,28 +137,28 @@ def to_collection(from_, includes=None, excludes=None, format=None, recursive=Fa
     have no effect under this mode unless some decendent objects are SQLAlchemy
     declarative model objects, in which case processing will be the same as
     described above.
-    
+
     **Note:** If `from_` is an instance of a dict its keys will be converted to
     a string regardless. All iterables besides a dict is returned as a list.
-    
-    
+
+
     If `format` is the string `json`, the result returned will be a JSON string
     , otherwise a Python collection object will be returned.
-    
+
     If any `json_kwargs` is provided, they will be passed through to the
     underlying simplejson JSONDecoder.
-    
+
     Examples:
     ---------
     >>> to_collection(legco) #doctest: +SKIP
     {'name': 'Hong Kong Legislative Council Building', 'founded': {'date': '1912-01-15'}, 'location': {'type': 'Point', 'coordinates': (22.280909, 114.160349)}}
-    
+
     >>> to_collection(legco, excludes=['founded', 'location']) #doctest: +SKIP
     {'name': 'Hong Kong Legislative Council Building'}
-    
+
     >>> to_collection(legco, excludes='founded', format='json') #doctest: +SKIP
     '{"name": "Hong Kong Legislative Council Building", 'location': {'type': 'Point', 'coordinates': [22.280909, 114.160349]}}'
-    
+
     >>> to_collection([legco, hkpark], recursive=True, included={Location: set(['founded'])}) #doctest: +SKIP
     [{'name': 'Hong Kong Legislative Council Building', 'founded': {'date': '1912-01-15'}, 'location': {'type': 'Point', 'coordinates': (22.280909, 114.160349)}},
     {'name': 'Hong Kong Park', 'founded': {'date': '1991-05-23'}, 'location': {'type': 'Point', 'coordinates': [22.2771398, 114.1613993]}}]
@@ -178,7 +178,7 @@ def to_collection(from_, includes=None, excludes=None, format=None, recursive=Fa
         excludes = _ensure_is_dict(from_.__class__, excludes)
 
         props = _get_model_properties(from_, excludes, recursive=recursive)
-        attrs = set(props.iterkeys())
+        attrs = set(props.viewkeys())
         if includes and from_.__class__ in includes:
             attrs |= includes[from_.__class__]
         if excludes and from_.__class__ in excludes:
@@ -199,16 +199,15 @@ def to_collection(from_, includes=None, excludes=None, format=None, recursive=Fa
             result = {"date": from_.isoformat()}
         elif isinstance(from_, timedelta):
             result = {"interval": from_.seconds}
-        elif geos_support:
-            if isinstance(from_, WKTElement):
-                result = asGeoJSON(wkt_decode(from_.geom_wkt))
-            elif isinstance(from_, WKBElement):
-                result = asGeoJSON(wkb_decode(str(from_.geom_wkb)))
+        elif geos_support and isinstance(from_, (WKTElement, WKBElement)):
+            result = as_geojson(to_shape(from_))
         elif isinstance(from_, dict):
             result = {}
             for k, v in from_.items():
-                result[unicode(k)] = to_collection(v, includes=includes, excludes=excludes, recursive=recursive)
-        elif hasattr(from_, "__iter__"): # iterable collections, not strings
+                result[unicode(k)] = to_collection(v, includes=includes, excludes=excludes,
+                                                   recursive=recursive)
+        # iterable collections, not strings
+        elif iterable(from_) and not isinstance(from_, (basestring, bytes, bytearray)):
             result = [to_collection(v, includes=includes, excludes=excludes, recursive=recursive)
                       for v in from_] if recursive else list(from_)
         else:
@@ -219,45 +218,54 @@ def to_collection(from_, includes=None, excludes=None, format=None, recursive=Fa
 
     return result
 
-def from_mapping(mapping, instance, excludes=None, format=None):
-    warnings.warn("from_mapping() is deprecated and will be removed in 0.6, please use from_collection() instead.")
-    return from_collection(mapping, instance, excludes=excludes, format=format)
 
 def _get_property_instance(session, mapping, prop):
     prop_cls = prop.mapper.class_
-    prop_pk_vals = tuple((mapping[pk_col.key] for pk_col in prop.mapper.primary_key if pk_col.key in mapping))
+    prop_pk_vals = tuple((mapping[pk_col.key]
+                          for pk_col in prop.mapper.primary_key
+                          if pk_col.key in mapping))
     if prop_pk_vals:
         prop_inst = session.query(prop_cls).get(prop_pk_vals)
     elif prop.mapper.polymorphic_on is not None:
-        prop_inst = prop.mapper.polymorphic_map[mapping[prop.mapper.get_property_by_column(prop.mapper.polymorphic_on).key]].class_()
+        prop_inst = prop.mapper.polymorphic_map[mapping[prop.mapper.get_property_by_column(
+            prop.mapper.polymorphic_on).key]].class_()
     else:
         prop_inst = prop_cls()
     return prop_inst
 
+
+def iterable(param):
+    try:
+        iter(param)
+    except TypeError:
+        return False
+    return True
+
+
 def from_collection(from_, to_, excludes=None, format=None, collection_handling="replace"):
-    """Utility function to recursively apply data in a Python collection to SQLAlchemy declarative model objects.
-    
+    """Recursively apply data in a Python collection to SQLAlchemy declarative model objects.
+
     This function takes a `from_` and an `to_` and sets the attributes on the
     SQLAlchemy declarative model instance using the key-value pairs from the
     collection **inplace**.
-    
+
     If `excludes` is provided, it works similarily as `to_collection`.
-    
+
     If `format` is the string `json`, the mapping returned will be a JSON
     string, otherwise the mapped model(s) will be returned.
-    
+
     If `collection_handling` is `replace`, which is the default, all the
     supplied relationship mappings will be converted to the correct subclass
     instances and replace the entire relationship collection on the parent
     objects. If the value is `append`, the mapped model instance will be
     appended to the relationship collection instead.
-    
+
     If a key from the mapping is not found as a column on a model instance, it
     will simply be skipped and not set on the instance.
-    
+
     The values supplied is converted according to the similiar rules as
     `to_collection()`:
-    
+
     ============== ============================================
     column type    mapping value format
     ============== ============================================
@@ -267,45 +275,38 @@ def from_collection(from_, to_, excludes=None, format=None, collection_handling=
     timedelta      {"interval": seconds}
     WKTElement     GeoJSON
     ============== ============================================
-    
-    **Security Notice:** This function currently does not yet have integration 
-    support for data validation. If you are using this function to directly 
-    mass-assign user supplied data to your model instances, make sure you have 
-    validated the data first. In a future version of blueberrypy, integration 
-    with a form validation library will be provided to ease this process. 
+
+    **Security Notice:** This function currently does not yet have integration
+    support for data validation. If you are using this function to directly
+    mass-assign user supplied data to your model instances, make sure you have
+    validated the data first. In a future version of blueberrypy, integration
+    with a form validation library will be provided to ease this process.
     """
     if format == "json":
         from_ = json.loads(from_)
 
-    if not isinstance(from_, dict):
-        if hasattr(from_, "__iter__"):
-            if not hasattr(to_, "__iter__"):
-                raise TypeError("to_ must be an iterable if from_ is an iterable.")
-            elif len(from_) != len(to_):
-                raise ValueError("length of to_ must match length of from_.")
-
-    if collection_handling != "replace" and collection_handling != "append":
+    if collection_handling not in ["replace", "append"]:
         raise ValueError("collection_handling must be 'replace' or 'append'.")
 
     excludes = _ensure_is_dict(to_.__class__, excludes)
 
     if isinstance(from_, dict):
         if isinstance(to_, dict):
-            for k in to_.iterkeys():
+            for k in to_.viewkeys():
                 if k in from_:
                     to_[k] = from_collection(from_[k], to_[k], excludes=excludes)
         elif hasattr(to_, "__mapper__"):
 
             if not sqlalchemy_support:
                 raise ImportError(textwrap.dedent("""SQLAlchemy not installed.
-    
+
                 Please use install it first before proceding:
-    
+
                 $ pip install sqlalchemy
                 """))
 
             props = _get_model_properties(to_, excludes, recursive=True)
-            attrs = set(props.iterkeys())
+            attrs = set(props.viewkeys())
             if excludes and to_.__class__ in excludes:
                 attrs -= excludes[to_.__class__]
 
@@ -320,23 +321,29 @@ def from_collection(from_, to_, excludes=None, format=None, collection_handling=
                         if prop.uselist is None or prop.uselist:
 
                             if collection_handling == "replace":
-                                col = collections.prepare_instrumentation(prop.collection_class or list)()
+                                col = collections.prepare_instrumentation(prop.collection_class or
+                                                                          list)()
                             elif collection_handling == "append":
                                 col = getattr(to_, attr)
 
                             appender = col._sa_appender
 
-                            from_iterator = iter(from_val) if isinstance(from_val, list) else from_val.itervalues()
+                            from_iterator = (iter(from_val)
+                                             if isinstance(from_val, list)
+                                             else from_val.viewvalues())
 
                             for v in from_iterator:
-                                prop_inst = _get_property_instance(Session.object_session(to_), v, prop)
+                                prop_inst = _get_property_instance(Session.object_session(to_), v,
+                                                                   prop)
                                 appender(from_collection(v, prop_inst, excludes=excludes))
 
                             if collection_handling == "replace":
                                 setattr(to_, attr, col)
                         else:
-                            prop_inst = _get_property_instance(Session.object_session(to_), from_val, prop)
-                            setattr(to_, attr, from_collection(from_val, prop_inst, excludes=excludes))
+                            prop_inst = _get_property_instance(Session.object_session(to_),
+                                                               from_val, prop)
+                            setattr(to_, attr, from_collection(from_val, prop_inst,
+                                                               excludes=excludes))
                     else:
                         setattr(to_, attr, from_collection(from_val, None, excludes=excludes))
         else:
@@ -349,9 +356,16 @@ def from_collection(from_, to_, excludes=None, format=None, collection_handling=
             elif "interval" in from_:
                 to_ = timedelta(seconds=from_["interval"])
             elif geos_support and "type" in from_:
-                to_ = WKTElement(asShape(from_).wkt)
+                to_ = from_shape(as_shape(from_))
 
-    elif hasattr(from_, "__iter__") and hasattr(to_, "__iter__"):
+    elif iterable(from_) and not isinstance(from_, (basestring, bytes, bytearray)):
+
+        if not iterable(to_) or isinstance(to_, (basestring, bytes, bytearray)):
+            raise TypeError("to_ must be an non-scalar sequence because from_ is.")
+
+        elif len(from_) != len(to_):
+            raise ValueError("length of to_ must match length of from_.")
+
         to_ = [from_collection(f, t, excludes=excludes) for f, t in zip(from_, to_)]
 
     else:
@@ -363,9 +377,9 @@ def from_collection(from_, to_, excludes=None, format=None, collection_handling=
 class CSRFToken(object):
 
     def __init__(self, path, secret, session_id, urlsafe=False):
-        self.path = str(path)
-        self.secret = str(secret)
-        self.session_id = str(session_id)
+        self.path = bytes(bytearray(path, sys.getdefaultencoding()))
+        self.secret = bytes(bytearray(secret, sys.getdefaultencoding()))
+        self.session_id = bytes(bytearray(session_id, sys.getdefaultencoding()))
         self.urlsafe = urlsafe
         self.token = self.generate(urlsafe)
 
@@ -382,17 +396,28 @@ class CSRFToken(object):
         return self.token
 
     def verify(self, other):
-        return str(self) == str(other)
+        return unicode(self.token) == unicode(other)
+
+    def __eq__(self, other):
+        return self.verify(other)
+
+    def _ne__(self, other):
+        return not self == other
 
     def __str__(self):
+        return self.token if sys.version_info < (3, 0) else str(self.token)
+
+    def __bytes__(self):
         return self.token
 
     def __repr__(self):
-        return "CSRFToken(%r, %r, %r, %r)" % (self.path, self.secret, self.session_id, self.urlsafe)
+        return "CSRFToken({0}, {1}, {2}, {3})".format(self.path, self.secret, self.session_id,
+                                                      self.urlsafe)
 
 
 def pad_block_cipher_message(msg, block_size=16, padding='{'):
     return msg + (block_size - len(msg) % block_size) * padding
+
 
 def unpad_block_cipher_message(msg, padding="{"):
     return msg.rstrip(padding)

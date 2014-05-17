@@ -2,7 +2,7 @@ import logging
 import warnings
 
 import cherrypy
-from cherrypy.lib.tools import Tool, _getargs
+from cherrypy._cptools import Tool, _getargs
 
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class MultiHookPointTool(Tool):
     """MultiHookPointTool provides subclasses the infrastructure for writing
     Tools that need to run at more than one request hook point.
-    
+
     Subclasses can simply provide methods with the same name as the hook points
     and MuiltiHookPointTool will automatically wire each hook up to the request
     hook points when turned on in the configuration.
@@ -28,18 +28,18 @@ class MultiHookPointTool(Tool):
         hook point and a callable because there's no such thing. As such,
         subclasses will most likely only provide a default priority for the
         hook point callables the subclasses provide.
-        
+
         Same as the Tool class CherryPy supplies, the `name` parameter is set
         automatically when a MultiHookPointTool instance is attached to a
         ToolBox if not supplied.
-        
+
         Lastly, similar to Tool, this constructor will also loop through all
         the hooks and attach their arguments directly to the Tool instance.
         The only difference is all the tool arguments are prefixed with their
         hook point names to avoid name conflicts.
-        
+
         Example::
-            
+
             app_config = {
                 "/": {
                     "tools.my_multipoint_tool.on": True,
@@ -83,18 +83,20 @@ class MultiHookPointTool(Tool):
                     warnings.warn("%r is not a callable." % hook)
 
                 hook_conf = {}
-                for k, v in conf.iteritems():
+                for k, v in conf.viewitems():
                     if k.startswith(hook_point):
                         k = k.replace(hook_point, "").split(".", 1)[-1]
                         hook_conf[k] = v
 
                 priority_key = hook_point + ".priority"
-                hook_priority = self._priority if priority_key not in hook_conf else hook_conf[priority_key]
+                hook_priority = (self._priority
+                                 if priority_key not in hook_conf
+                                 else hook_conf[priority_key])
                 request.hooks.attach(hook_point, hook, hook_priority, **hook_conf)
 
     def __call__(self, *args, **kwargs):
-        raise NotImplementedError("This %r instance cannot be called directly." % \
-            self.__class__.__name__)
+        raise NotImplementedError("This %r instance cannot be called directly." %
+                                  self.__class__.__name__)
 
 
 class SQLAlchemySessionTool(MultiHookPointTool):
@@ -108,7 +110,7 @@ class SQLAlchemySessionTool(MultiHookPointTool):
     in the end.
 
     As this tool hooks up _3_ callables to the request, this tools will also
-    accept 3 `priority` options - `on_start_resource.priority`, 
+    accept 3 `priority` options - `on_start_resource.priority`,
     `before_finalize.priority` and `after_error_response.priority`. The `priority`
     option is still accepted as a default for all 3 hook points.
     """
@@ -146,7 +148,7 @@ class SQLAlchemySessionTool(MultiHookPointTool):
         try:
             session.rollback()
             session.expunge_all()
-        except SQLAlchemyError, e:
+        except SQLAlchemyError as e:
             logger.error(e, exc_info=True)
             cherrypy.log.error(msg=e, severity=logging.ERROR, traceback=True)
         finally:

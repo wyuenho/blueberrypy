@@ -23,12 +23,13 @@ def configure_jinja2(assets_env=None, **kwargs):
         extensions.append("jinja2.ext.autoescape")
 
     jinja2_env = Jinja2Environment(autoescape=autoescape, extensions=extensions,
-                                  **kwargs)
+                                   **kwargs)
 
     if assets_env:
         jinja2_env.assets_environment = assets_env
 
     return jinja2_env
+
 
 def get_template(*args, **kwargs):
     if not jinja2_env:

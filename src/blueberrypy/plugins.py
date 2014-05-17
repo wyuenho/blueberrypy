@@ -6,7 +6,7 @@ try:
 except ImportError:
     from logutils.dictconfig import dictConfig
 
-from magicbus.plugins import SimplePlugin
+from cherrypy.process.plugins import SimplePlugin
 
 
 __all__ = ['LoggingPlugin', 'SQLAlchemyPlugin']
@@ -16,18 +16,16 @@ class LoggingPlugin(SimplePlugin):
     """ Sets up process-wide application specific loggers
     """
 
-    def __init__(self, bus,
-                 raiseExceptions=logging.raiseExceptions,
-                 config={}):
+    def __init__(self, bus, raise_exceptions=logging.raiseExceptions, config={}):
 
         SimplePlugin.__init__(self, bus)
 
-        self.raiseExceptions = raiseExceptions
+        self.raise_exceptions = raise_exceptions
         self.config = config
 
     def start(self):
         try:
-            logging.raiseExceptions = self.raiseExceptions
+            logging.raiseExceptions = self.raise_exceptions
             dictConfig(self.config)
             self.bus.log("Loggers configured")
         except Exception:
@@ -41,11 +39,11 @@ class LoggingPlugin(SimplePlugin):
 
 class SQLAlchemyPlugin(SimplePlugin):
     """Sets up process-wide SQLAlchemy engines.
-    
+
     This plugin setups basic machinary to attach and clean up engine bindings.
     Engine bindings are in the exact format as the `binds` keyword in
     `Session.configure()`.
-    
+
     In the future in case we ever get to horizontal sharding, this plugin will
     need to be updated.
     """
@@ -63,7 +61,7 @@ class SQLAlchemyPlugin(SimplePlugin):
     def graceful(self):
         if hasattr(self, "engine_bindings"):
             engine_bindings = self.engine_bindings
-            for engine in engine_bindings.itervalues():
+            for engine in engine_bindings.viewvalues():
                 self.bus.log("Disposing SQLAlchemy engine %s ..." % engine.url)
                 engine.dispose()
         elif hasattr(self, "engine"):
@@ -74,7 +72,7 @@ class SQLAlchemyPlugin(SimplePlugin):
 
     def _configure_engines(self):
         """Sets up engine bindings based on the given config.
-        
+
         Given a configuration dictionary, and optionally a key `prefix`, this
         method iterates all its sections looking for sections with names that
         start with `prefix`. The suffix of the name is fully qualified name to
@@ -83,30 +81,31 @@ class SQLAlchemyPlugin(SimplePlugin):
         configured engine bindings are to be found in
         `cherrypy.engine.sqlalchemy.engine_bindings` (or wherever you've
         attached this plugin to).
-        
+
         If there is a section that is named exactly the same as the `prefix`,
         that section's values are use to configure only one SQLAlchemy engine
         attached to `cherrypy.engine.sqlalchemy.engine`.
-        
+
         Example::
-        
+
             # The model to be imported starts after the _ following the prefix
             [sqlalchemy_engine_myproject.models.User]
             url = ...
             pool_recycle = ...
-            
+
             # If this section exists, only 1 engine will be configured
             [sqlalchemy_engine]
             url = ...
-        
-        
+
+
         :py:func: sqlalchemy.engine_from_config
         """
 
         try:
             from sqlalchemy.engine import engine_from_config
-        except ImportError, e:
-            self.bus.log(textwrap.dedent("""SQLAlchemy not installed.
+        except ImportError as e:
+            self.bus.log(textwrap.dedent("""
+            SQLAlchemy not installed.
 
             Please use install it first before proceding:
 
@@ -120,13 +119,18 @@ class SQLAlchemyPlugin(SimplePlugin):
             else:
                 engine_bindings = {}
 
-                for section_name, section in self.config.iteritems():
+                for section_name, section in self.config.viewitems():
                     if section_name.startswith(self.prefix):
                         model_fqn = section_name[len(self.prefix) + 1:]
                         model_fqn_parts = model_fqn.rsplit('.', 1)
-                        model_mod = __import__(model_fqn_parts[0], globals(), locals(), [model_fqn_parts[1]])
-                        model = getattr(model_mod, model_fqn_parts[1])
-                        engine_bindings[model] = engine_from_config(section, '')
+                        try:
+                            model_mod = __import__(model_fqn_parts[0], globals(), locals(),
+                                                   [model_fqn_parts[1]])
+                        except ImportError as e:
+                            self.bus.log(e, level=40)
+                        else:
+                            model = getattr(model_mod, model_fqn_parts[1])
+                            engine_bindings[model] = engine_from_config(section, '')
 
                 self.engine_bindings = engine_bindings
 

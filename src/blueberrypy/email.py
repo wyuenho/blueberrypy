@@ -1,8 +1,10 @@
 from __future__ import absolute_import
 
+import codecs
 import logging
 import smtplib
 import socket
+import sys
 import time
 import warnings
 
@@ -46,24 +48,27 @@ class Mailer(object):
         return connection
 
     def send_email(self, to_, from_=None, subject=None, body=None,
-                  subtype="plain", charset="utf-8"):
+                   subtype="plain", charset="utf-8"):
 
         message = MIMEText(body, subtype, charset)
 
         if subject:
             subject_header = Header()
-            subject = unicode(subject, charset) if isinstance(subject, str) else subject
+            subject = (codecs.decode(bytearray(subject, sys.getdefaultencoding()), charset)
+                       if isinstance(subject, str) else subject)
             subject_header.append(subject.strip())
             message["Subject"] = subject_header
 
         from_ = from_ or self.default_sender
-        from_ = unicode(from_, charset) if isinstance(from_, str) else from_
+        from_ = (codecs.decode(bytearray(from_, sys.getdefaultencoding()), charset)
+                 if isinstance(from_, str) else from_)
         from_realname, from_addr = parseaddr(from_)
         from_header = Header()
         from_header.append(formataddr((from_realname, from_addr)))
         message['From'] = from_header
 
-        to_ = unicode(to_, charset) if isinstance(to_, str) else to_
+        to_ = (codecs.decode(bytearray(to_, sys.getdefaultencoding()), charset)
+               if isinstance(to_, str) else to_)
         to_realname, to_addr = parseaddr(to_)
         to_header = Header()
         to_header.append(formataddr((to_realname, to_addr)))
@@ -75,16 +80,16 @@ class Mailer(object):
         connection = self._get_connection()
         try:
             connection.sendmail(from_, to_, mime_message.as_string(False))
-        except smtplib.SMTPHeloError, e:
+        except smtplib.SMTPHeloError as e:
             logger.error(e, exc_info=True)
             raise
-        except smtplib.SMTPSenderRefused, e:
+        except smtplib.SMTPSenderRefused as e:
             logger.error(e, exc_info=True)
             raise
-        except smtplib.SMTPDataError, e:
+        except smtplib.SMTPDataError as e:
             logger.error(e, exc_info=True)
             raise
-        except smtplib.SMTPServerDisconnected, e:
+        except smtplib.SMTPServerDisconnected as e:
             tries = 0
             exp_timeout = 2 ** tries
             exception = None
@@ -94,7 +99,7 @@ class Mailer(object):
                     time.sleep(exp_timeout)
                     connection.sendmail(from_, to_, mime_message.as_string(False))
                     break
-                except smtplib.SMTPException, e:
+                except smtplib.SMTPException as e:
                     tries = tries + 1
                     exp_timeout = 2 ** tries
                     exception = e
@@ -111,18 +116,21 @@ class Mailer(object):
 
         if subject:
             subject_header = Header()
-            subject = unicode(subject, charset) if isinstance(subject, str) else subject
+            subject = (codecs.decode(bytearray(subject, sys.getdefaultencoding()), charset)
+                       if isinstance(subject, str) else subject)
             subject_header.append(subject.strip())
             message["Subject"] = subject_header
 
         from_ = from_ or self.default_sender
-        from_ = unicode(from_, charset) if isinstance(from_, str) else from_
+        from_ = (codecs.decode(bytearray(from_, sys.getdefaultencoding()), charset)
+                 if isinstance(from_, str) else from_)
         from_realname, from_addr = parseaddr(from_)
         from_header = Header()
         from_header.append(formataddr((from_realname, from_addr)))
         message['From'] = from_header
 
-        to_ = unicode(to_, charset) if isinstance(to_, str) else to_
+        to_ = (codecs.decode(bytearray(to_, sys.getdefaultencoding()), charset)
+               if isinstance(to_, str) else to_)
         to_realname, to_addr = parseaddr(to_)
         to_header = Header()
         to_header.append(formataddr((to_realname, to_addr)))
@@ -136,9 +144,11 @@ class Mailer(object):
 
 _mailer = None
 
+
 def configure(email_config):
     global _mailer
     _mailer = Mailer(**email_config)
+
 
 def send_email(to_, from_=None, subject=None, body=None, subtype="plain",
                charset="utf-8"):
@@ -147,6 +157,7 @@ def send_email(to_, from_=None, subject=None, body=None, subtype="plain",
         warnings.warn("Module %s not configured." % __name__)
     else:
         return _mailer.send_email(to_, from_, subject, body, subtype, charset)
+
 
 def send_html_email(to_, from_=None, subject=None, text=None, html=None,
                     charset="utf-8"):
