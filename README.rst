@@ -1,7 +1,7 @@
 BlueberryPy
 ===========
 
-.. image:: https://travis-ci.org/wyuenho/blueberrypy.svg
+.. image:: https://travis-ci.org/wyuenho/blueberrypy.png
     :target: https://travis-ci.org/wyuenho/blueberrypy
 
 Same as CherryPy, just with a different filling.
