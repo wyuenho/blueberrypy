@@ -9,8 +9,8 @@ services:
   - redis
 
 install:
-  - pip install -e .
-  - pip install --allow-external cdecimal blueberrypy[all,speedups,dev]
+  - pip install --allow-all-external --no-use-wheel -e .
+  - pip install --allow-all-external --no-use-wheel blueberrypy[all,speedups,dev]
 
 before_script:
   - psql --command="CREATE ROLE tester PASSWORD 'tester' INHERIT LOGIN;" --username=postgres
