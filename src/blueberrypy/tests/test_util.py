@@ -113,7 +113,7 @@ class CSRFTokenTest(unittest.TestCase):
 
 class CollectionUtilTest(unittest.TestCase):
 
-    def setUp(self):
+    def setUpClass(self):
         metadata.create_all(engine)
 
         te = DerivedTestEntity(id=1,
@@ -144,7 +144,7 @@ class CollectionUtilTest(unittest.TestCase):
 
         session.commit()
 
-    def tearDown(self):
+    def tearDownClass(self):
         session = Session()
         session.close()
         metadata.drop_all(engine)
@@ -328,7 +328,3 @@ class BlockCipherPaddingTest(unittest.TestCase):
 
     def test_unpad_block_cipher_message(self):
         self.assertEqual(unpad_block_cipher_message("message{{{{{{{{{"), "message")
-
-
-if __name__ == '__main__':
-    unittest.main()
