@@ -77,12 +77,12 @@ def setup_server():
             return "OK"
         delkey.exposed = True
 
-        def blah(self):
+        def storage_type(self):
             return self._cp_config['tools.sessions.storage_type']
-        blah.exposed = True
+        storage_type.exposed = True
 
         def iredir(self):
-            raise cherrypy.InternalRedirect('/blah')
+            raise cherrypy.InternalRedirect('/storage_type')
         iredir.exposed = True
 
         def restricted(self):
@@ -137,13 +137,13 @@ except ImportError:
 
     class RedisSessionTest(unittest.TestCase):
         def test_nothing(self):
-            self.fail("redis-py not available")
+            self.skipTest("redis-py not available")
 
 except socket.error:
 
     class RedisSessionTest(unittest.TestCase):
         def test_nothing(self):
-            self.fail("redis not reachable")
+            self.skipTest("redis not reachable")
 
 else:
     class RedisSessionTest(helper.CPWebCase):
@@ -190,10 +190,10 @@ else:
                 for i in range(request_count):
                     self.getPage("/", cookies)
                     # Uncomment the following line to prove threads overlap.
-##                    sys.stdout.write("%d " % index)
+                    # sys.stdout.write("%d " % index)
                 if not self.body.isdigit():
                     self.fail(self.body)
-                data_dict[index] = v = int(self.body)
+                data_dict[index] = int(self.body)
 
             # Start <request_count> concurrent requests from
             # each of <client_thread_count> clients
@@ -208,7 +208,7 @@ else:
                 t.join()
 
             hitcount = max(data_dict.values())
-            expected = 1 + (client_thread_count * request_count)
+            expected = client_thread_count * request_count + 1
             self.assertEqual(hitcount, expected)
 
         def test_3_Redirect(self):
@@ -228,4 +228,3 @@ else:
             # code has to survive calling save/close without init.
             self.getPage('/restricted', self.cookies, method='POST')
             self.assertErrorPage(405)
-

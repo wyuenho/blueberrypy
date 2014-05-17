@@ -4,9 +4,10 @@ except ImportError:
     import pickle
 
 import logging
+import math
 import threading
-import time
 
+from datetime import datetime
 from pprint import pformat
 
 from cherrypy.lib.sessions import Session
@@ -57,31 +58,30 @@ class RedisSession(Session):
     def _load(self):
         data = self.cache.get(self.prefix + self.id)
         if data:
-            retval = pickle.loads(data)
-            return retval
+            return pickle.loads(data)
 
     def _save(self, expiration_time):
         key = self.prefix + self.id
-        td = int(time.mktime(expiration_time.timetuple()))
+        seconds = int(math.ceil((expiration_time - datetime.now()).total_seconds()))
+        data = pickle.dumps((self._data, expiration_time), pickle.HIGHEST_PROTOCOL)
 
-        data = pickle.dumps((self._data, expiration_time),
-                            pickle.HIGHEST_PROTOCOL)
-
-        def critical_section(pipe):
-            pipe.multi()
-            pipe.set(key, data)
-            pipe.expireat(key, td)
-
-        self.cache.transaction(critical_section, key)
+        reply = self.cache.setex(key, seconds, data)
+        if not reply:
+            logger.error("Redis didn't reply for SETEX '{0}' '{1}' data".format(
+                key, seconds))
 
     def _delete(self):
         self.cache.delete(self.prefix + self.id)
 
     def acquire_lock(self):
+        """Acquire an exclusive lock on the currently-loaded session data."""
         self.locked = True
         self.locks.setdefault(self.id, threading.RLock()).acquire()
+        if self.debug:
+            logger.debug('Lock acquired.', 'TOOLS.SESSIONS')
 
     def release_lock(self):
+        """Release the lock on the currently-loaded session data."""
         self.locks[self.id].release()
         self.locked = False
 
